@@ -83,6 +83,8 @@ export default function MovieEpisode(resp: any,tmdb:any) {
   const [imdbData, setImdbData] = useState<any>([]);
   const ref = useRef();
 
+  const [baseUrl, setBaseUrl] = useState<string>("https://vidsrc.net/embed/movie/");
+
   console.log(data);
 
   // useEffect(() => {
@@ -201,13 +203,29 @@ console.log(resp)
           
           
           <div className=" mx-auto mt-8">
+            <div className="flex items-center justify-between">
+              {/* make 2 buttons that will switch the prefix of the source */}
+              <div className="flex items-center">
+                <div className="flex items-center gap-2 p-2 bg-[#0e0c8d] rounded-md text-white m-2">
+                  Sources
+                </div>
+                <div className="flex items-center gap-2 p-2 bg-[#0e0c8d] rounded-md text-white m-2">
+                  <button onClick={() => {if(baseUrl !== 'https://vidsrc.net/embed/movie/')setBaseUrl('https://vidsrc.net/embed/movie/')}}className={`flex items-center gap-2 p-2 ${baseUrl == 'https://vidsrc.net/embed/movie/'?  'bg-[#0e54bc]' : ' bg-[#2f2f2f]'}  rounded-md text-white m-2`}>
+                    <span>Vidsrc</span>
+                  </button>
+                  <button onClick={() => {if(baseUrl !== 'https://vidsrc.pro/embed/movie/')setBaseUrl('https://vidsrc.pro/embed/movie/')}} className={`flex items-center gap-2 p-2 ${baseUrl == 'https://vidsrc.pro/embed/movie/'?  'bg-[#0e54bc]' : ' bg-[#2f2f2f]'} rounded-md text-white`}>
+                    <span>VidsrcPro</span>
+                  </button>
+                </div>
+              </div>
+            </div>
             <iframe
-            onLoadCapture={handleIframe}
+              onLoadCapture={handleIframe}
               className="p-2 w-full h-[270px] lg:h-[872px] mx-auto"
-
               // src={`https://vidsrc.cc/v2/embed/movie/${id}`}
+              src={`${baseUrl}${id}`}
 
-              src={`https://vidsrc.pro/embed/movie/${id}`}
+              // src={`https://vidsrc.pro/embed/movie/${id}`}
               allowFullScreen
             ></iframe>
             {/* <EnimePlayer subtitles={subtitles()} src={"https://ottocors.vercel.app/cors?url=https://tc-1.dayimage.net/_v6/380ccc6aa21d4e175c3ebbf36eb393af084ce3306d32c57b77f505d8efa16912eae144c75c5ade7b13650b17dcf40835ef450fe3ee65a3e131368f85213a25a32c278706ad24a408390dd213c35d9a6782294bd8e1b9751f2d95fec0ad3045054c047845049a3843204568183c0a93366fb074a9d9cb60b776336e9e525dddde/master.m3u8"} poster="" title={data?.title}/> */}
