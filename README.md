@@ -1,12 +1,12 @@
 <div align="center">
-<h1>OTMovies</h1>
+<h1>NMovies</h1>
 
 
-### OTMovies is a website where you can watch Movies,Series & Animes.
+### NMovies is a website where you can watch Movies,Series & Animes.
 
 Since it is an open-source project, there won't be any ads in this website.
 
-The official website is [otmovies.vercel.app](https://[otmovies.vercel.app)
+The official website is [nmovies.app](https://nmovies.app)
 
 </div>
 <h3>Features:</h3>
@@ -40,10 +40,10 @@ The official website is [otmovies.vercel.app](https://[otmovies.vercel.app)
  </ul>
  
  ### Support
-
+<!-- 
 Consider showing some support with a cup of coffee.
 
-<a href="https://www.buymeacoffee.com/ottoprogrammer"><img src="https://www.buymeacoffee.com/assets/img/guidelines/download-assets-sm-1.svg" height="35px"/></a>
+<a href="https://www.buymeacoffee.com/ottoprogrammer"><img src="https://www.buymeacoffee.com/assets/img/guidelines/download-assets-sm-1.svg" height="35px"/></a> -->
 
 <br/>
 <!-- LICENSE -->

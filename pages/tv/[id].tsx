@@ -41,6 +41,8 @@ function TvEpisode(res: any) {
   const [casts, setCasts] = useState<any>([]);
   const [firstEpName, setFirstEpName] = useState("");
 
+  const [baseUrl, setBaseUrl] = useState<string>("https://vidsrc.net/embed/tv/");
+
   const { MyList, CurrentState, ContinueWatching } = useSelector(
     (state: any) => state
   );
@@ -117,19 +119,33 @@ function TvEpisode(res: any) {
 
   return (
     <>
-      <div className="w-full	relative mx-auto ">
+      <div className="w-full relative mx-auto">
         <DetailContainer {...data} media_type="tv" />
         <div className="px-1 lg:px-6 mx-auto">
           <div>
-            <div className="flex flex-col ">
+            <div className="flex flex-col">
               <div className="flex">
                 <div className="w-full">
+                  <div className="flex items-center justify-between">
+                    {/* make 2 buttons that will switch the prefix of the source */}
+                    <div className="flex items-center">
+                      <div className="flex items-center gap-2 p-2 bg-[#0e0c8d] rounded-md text-white m-2">
+                        Sources
+                      </div>
+                      <div className="flex items-center gap-2 p-2 bg-[#0e0c8d] rounded-md text-white m-2">
+                        <button onClick={() => {if(baseUrl !== 'https://vidsrc.net/embed/movie/')setBaseUrl('https://vidsrc.net/embed/tv/')}}className={`flex items-center gap-2 p-2 ${baseUrl == 'https://vidsrc.net/embed/movie/'?  'bg-[#0e54bc]' : ' bg-[#2f2f2f]'}  rounded-md text-white m-2`}>
+                          <span>Vidsrc</span>
+                        </button>
+                        <button onClick={() => {if(baseUrl !== 'https://vidsrc.pro/embed/movie/')setBaseUrl('https://vidsrc.pro/embed/tv/')}} className={`flex items-center gap-2 p-2 ${baseUrl == 'https://vidsrc.pro/embed/movie/'?  'bg-[#0e54bc]' : ' bg-[#2f2f2f]'} rounded-md text-white`}>
+                          <span>VidsrcPro</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                   <iframe
                     onLoadCapture={handleIframe}
                     className=" w-full h-[300px] lg:h-[750px] mx-auto "
-                    // src={`https://vidsrc.cc/v2/embed/tv/${id}/${dataState?.season}/${dataState?.ep_num}`}
-                    // src={`https://vidsrc.pro/embed/tv/${id}/${dataState?.season}/${dataState?.ep_num}`}
-                    src={`https://vidsrc.net/embed/tv/${id}/${dataState?.season}/${dataState?.ep_num}`}
+                    src={`${baseUrl}${id}/${dataState?.season}/${dataState?.ep_num}`}
                     allowFullScreen
                     
                   ></iframe>

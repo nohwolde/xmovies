@@ -87,17 +87,6 @@ export default function MovieEpisode(resp: any,tmdb:any) {
 
   console.log(data);
 
-  // useEffect(() => {
-
-  //   player?.current
-  //     ?.changeSource({
-  //       src: stream?.sources?.filter((t:any) => t.quality == "auto")[0]?.url,
-  //       title:"props.title",
-  //       poster: "https://i.imgur.com/M2aFrfc.jpeg"
-        
-  //     })
-     
-  // }, [stream]);
   const subs :any = []
   const subtitles = () => {
     for (let i=0;i<s.length;i++) { subs.push({default : false,name:s[i]?.lang,src:s[i].url}) }
@@ -200,8 +189,6 @@ console.log(resp)
       <div className="w-full relative mx-auto ">
             <DetailContainer {...data} media_type="movie"/>
         <div className="gap-4">
-          
-          
           <div className=" mx-auto mt-8">
             <div className="flex items-center justify-between">
               {/* make 2 buttons that will switch the prefix of the source */}
@@ -222,10 +209,7 @@ console.log(resp)
             <iframe
               onLoadCapture={handleIframe}
               className="p-2 w-full h-[270px] lg:h-[872px] mx-auto"
-              // src={`https://vidsrc.cc/v2/embed/movie/${id}`}
               src={`${baseUrl}${id}`}
-
-              // src={`https://vidsrc.pro/embed/movie/${id}`}
               allowFullScreen
             ></iframe>
             {/* <EnimePlayer subtitles={subtitles()} src={"https://ottocors.vercel.app/cors?url=https://tc-1.dayimage.net/_v6/380ccc6aa21d4e175c3ebbf36eb393af084ce3306d32c57b77f505d8efa16912eae144c75c5ade7b13650b17dcf40835ef450fe3ee65a3e131368f85213a25a32c278706ad24a408390dd213c35d9a6782294bd8e1b9751f2d95fec0ad3045054c047845049a3843204568183c0a93366fb074a9d9cb60b776336e9e525dddde/master.m3u8"} poster="" title={data?.title}/> */}

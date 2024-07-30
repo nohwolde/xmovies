@@ -30,7 +30,7 @@ function Footer() {
                 <path d="M12 12l9 3l-4 2l-2 4l-3 -9" />
               </svg>
               <p className=" font-black bg-gradient-to-r from-amber-500 to-pink-500 bg-clip-text text-transparent">
-                OTTOMOVIES
+                NMOVIES
               </p>
             </div>
             <div className="px-7 text-xs">
@@ -183,7 +183,7 @@ function Footer() {
         </div>
       </div>
       <div className="container mx-auto my-4 text-sm dark:text-neutral-400 font-medium flex justify-between">
-        <p className="px-4">© OTTOMOVIES — 2022.</p>
+        <p className="px-4">© NMOVIES — 2022.</p>
         <button className="px-2 py-1 rounded mr-2 dark:bg-neutral-800 bg-neutral-100 dark:text-white text-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-800/50 transition-colors 2xl:block xl:block lg:block md:block hidden">
           <svg
             stroke="currentColor"

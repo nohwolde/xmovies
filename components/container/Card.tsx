@@ -70,7 +70,7 @@ function Card(movie: CardProps) {
         onClick={handleSelected}
       >
         <div className="">
-          <div className={`drop-shadow-xl w-full h-[11rem] lg:h-[19rem]`}>
+          <div className={`drop-shadow-xl w-full h-[19rem]`}>
             <Image
               src={
                 movie.poster_path
