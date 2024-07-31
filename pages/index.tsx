@@ -135,6 +135,9 @@ const DramaShows = async () => {
   };
   return (
     <div className="">
+      <head>
+        <script defer src="https://cloud.umami.is/script.js" data-website-id="62a39000-25ac-4a5e-b0a1-e3a696dd4a3f"></script>
+      </head>
       <Head>
         <title>NMovies</title>
         <link rel="icon" href="/favicon.ico" />
