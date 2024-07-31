@@ -146,7 +146,7 @@ const DramaShows = async () => {
       <Header Data={res?.res?.results}/>
       <div >
 
-<HomeContainer swiperId={0} Data={sortedList} heading="Continue Watching" />
+    <HomeContainer swiperId={0} Data={sortedList} heading="Continue Watching" />
 
       <HomeContainer
       swiperId={1}

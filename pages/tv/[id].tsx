@@ -133,10 +133,10 @@ function TvEpisode(res: any) {
                         Sources
                       </div>
                       <div className="flex items-center gap-2 p-2 bg-[#0e0c8d] rounded-md text-white m-2">
-                        <button onClick={() => {if(baseUrl !== 'https://vidsrc.net/embed/movie/')setBaseUrl('https://vidsrc.net/embed/tv/')}}className={`flex items-center gap-2 p-2 ${baseUrl == 'https://vidsrc.net/embed/movie/'?  'bg-[#0e54bc]' : ' bg-[#2f2f2f]'}  rounded-md text-white m-2`}>
+                        <button onClick={() => {if(baseUrl !== 'https://vidsrc.net/embed/movie/')setBaseUrl('https://vidsrc.net/embed/tv/')}}className={`flex items-center gap-2 p-2 ${baseUrl == 'https://vidsrc.net/embed/tv/'?  'bg-[#0e54bc]' : ' bg-[#2f2f2f]'}  rounded-md text-white m-2`}>
                           <span>Vidsrc</span>
                         </button>
-                        <button onClick={() => {if(baseUrl !== 'https://vidsrc.pro/embed/movie/')setBaseUrl('https://vidsrc.pro/embed/tv/')}} className={`flex items-center gap-2 p-2 ${baseUrl == 'https://vidsrc.pro/embed/movie/'?  'bg-[#0e54bc]' : ' bg-[#2f2f2f]'} rounded-md text-white`}>
+                        <button onClick={() => {if(baseUrl !== 'https://vidsrc.pro/embed/movie/')setBaseUrl('https://vidsrc.pro/embed/tv/')}} className={`flex items-center gap-2 p-2 ${baseUrl == 'https://vidsrc.pro/embed/tv/'?  'bg-[#0e54bc]' : ' bg-[#2f2f2f]'} rounded-md text-white`}>
                           <span>VidsrcPro</span>
                         </button>
                       </div>
