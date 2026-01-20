@@ -83,7 +83,7 @@ export default function MovieEpisode(resp: any,tmdb:any) {
   const [imdbData, setImdbData] = useState<any>([]);
   const ref = useRef();
 
-  const [baseUrl, setBaseUrl] = useState<string>("https://vidsrc.net/embed/movie/");
+  const [baseUrl, setBaseUrl] = useState<string>("https://vidsrcme.su/embed/movie/");
 
   console.log(data);
 
@@ -197,7 +197,7 @@ console.log(resp)
                   Sources
                 </div>
                 <div className="flex items-center gap-2 p-2 bg-[#0e0c8d] rounded-md text-white m-2">
-                  <button onClick={() => {if(baseUrl !== 'https://vidsrc.net/embed/movie/')setBaseUrl('https://vidsrc.net/embed/movie/')}}className={`flex items-center gap-2 p-2 ${baseUrl == 'https://vidsrc.net/embed/movie/'?  'bg-[#0e54bc]' : ' bg-[#2f2f2f]'}  rounded-md text-white m-2`}>
+                  <button onClick={() => {if(baseUrl !== 'https://vidsrcme.su/embed/movie/')setBaseUrl('https://vidsrcme.su/embed/movie/')}}className={`flex items-center gap-2 p-2 ${baseUrl == 'https://vidsrcme.su/embed/movie/'?  'bg-[#0e54bc]' : ' bg-[#2f2f2f]'}  rounded-md text-white m-2`}>
                     <span>Vidsrc</span>
                   </button>
                   <button onClick={() => {if(baseUrl !== 'https://vidsrc.pro/embed/movie/')setBaseUrl('https://vidsrc.pro/embed/movie/')}} className={`flex items-center gap-2 p-2 ${baseUrl == 'https://vidsrc.pro/embed/movie/'?  'bg-[#0e54bc]' : ' bg-[#2f2f2f]'} rounded-md text-white`}>
