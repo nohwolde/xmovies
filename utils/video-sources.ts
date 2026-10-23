@@ -7,30 +7,68 @@ export interface MediaRequest {
   episode?: string | number;
 }
 
+// What a provider's postMessage says about the current title: its player is
+// up ("ready"), or it can't play it ("error").
+export type PlaybackSignal = "ready" | "error";
+
+export interface PlaybackSignals {
+  // Messages from any other origin are ignored
+  origin: string;
+  parseMessage: (data: unknown) => PlaybackSignal | null;
+}
+
 export interface VideoSource {
   id: string;
   // Button label; defaults to "Source <position>" in the current list
   name?: string;
   buildUrl: (media: MediaRequest) => string;
+  // Only for providers that reliably post a message once a title is playable.
+  // Without it, the iframe's onLoad is the only signal we get.
+  signals?: PlaybackSignals;
 }
 
 // Providers keyed by TMDB id. Verified 2026-10 by loading each in an iframe
 // with the player's attributes and checking the stream length against the
 // real runtime. Removed as dead: vidsrc.cc (Cloudflare 522), vidsrcme.su,
 // vidsrc.pro; avoided: 2embed, multiembed, vidnest (adult/scam ads).
-const tmdbSource = (id: string, base: string): VideoSource => ({
+const tmdbSource = (
+  id: string,
+  base: string,
+  parseMessage?: PlaybackSignals["parseMessage"]
+): VideoSource => ({
   id,
   buildUrl: ({ type, id: mediaId, season, episode }) =>
     type === "movie" ? `${base}/movie/${mediaId}` : `${base}/tv/${mediaId}/${season}/${episode}`,
+  ...(parseMessage && { signals: { origin: base, parseMessage } }),
 });
 
-// No popups, sends progress events; no anime catalog (404s on anime)
-const VIXSRC = tmdbSource("vixsrc", "https://vixsrc.to");
-// Plays anime series but not anime movies
-const VIDLINK = tmdbSource("vidlink", "https://vidlink.pro");
-// Best anime coverage; follows TMDB's season/episode numbering
+const messageType = (data: unknown): unknown =>
+  typeof data === "object" && data !== null ? (data as { type?: unknown }).type : undefined;
+
+// Message shapes recorded 2026-10 with movie 550, TV 1399 S1E1 and a missing
+// id (999999999). No provider posts an explicit error: their "not found"
+// pages fire onLoad and then stay silent, so a missing "ready" is the signal.
+
+// No popups; no anime catalog (404s on anime). A playable title autoplays and
+// posts {type:"PLAYER_EVENT", event:{event:"play"|"timeupdate"|…}} within ~2s
+// of onLoad; the 404 page posts nothing.
+const VIXSRC = tmdbSource("vixsrc", "https://vixsrc.to", (data) =>
+  messageType(data) === "PLAYER_EVENT" ? "ready" : null
+);
+// Plays anime series but not anime movies. A playable title posts
+// {type:"MEDIA_DATA"} (its watch history) every 2s without waiting for play,
+// then {type:"PLAYER_EVENT", data:{event}} once playing. "We Couldn't Find This
+// Content" and server-error pages only post Yandex Metrica strings, if anything.
+const VIDLINK = tmdbSource("vidlink", "https://vidlink.pro", (data) => {
+  const type = messageType(data);
+  return type === "MEDIA_DATA" || type === "PLAYER_EVENT" ? "ready" : null;
+});
+// Best anime coverage; follows TMDB's season/episode numbering. Posts nothing,
+// whether the title plays or shows "Content unavailable".
 const VIDROCK = tmdbSource("vidrock", "https://vidrock.net");
-// Good coverage incl. anime, but popunder ads on click and patchy uptime
+// Good coverage incl. anime, but popunder ads on click and patchy uptime.
+// Its {type:"MEDIA_DATA"} progress message only starts some time into
+// playback (and needs autoplay), too late to tell a dead page from a slow one.
 const VIDSRC_SU = tmdbSource("vidsrc-su", "https://vidsrc.su");
 
 export type SourceCategory = "movie" | "tv" | "anime-movie" | "anime-tv";
@@ -87,6 +125,21 @@ export function buildEmbedUrl(source: VideoSource | undefined, media: MediaReque
   if (!source || media.id === undefined || media.id === null || media.id === "") return null;
   if (media.type === "tv" && (!media.season || !media.episode)) return null;
   return source.buildUrl(media);
+}
+
+// Reads a postMessage from the active source's iframe; anything from another
+// origin, or that the provider's adapter doesn't recognise, is null.
+export function readPlaybackSignal(
+  source: VideoSource | undefined,
+  event: Pick<MessageEvent, "origin" | "data">
+): PlaybackSignal | null {
+  const signals = source?.signals;
+  if (!signals || event.origin !== signals.origin) return null;
+  try {
+    return signals.parseMessage(event.data);
+  } catch {
+    return null;
+  }
 }
 
 // Index of the next source to try after `current` fails, or null when every

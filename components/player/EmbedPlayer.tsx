@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useReducer } from "react";
+import React, { useEffect, useMemo, useReducer, useRef } from "react";
 import {
   MediaRequest,
   VideoSource,
@@ -6,13 +6,23 @@ import {
   getAvailableSources,
   getInitialSourceIndex,
   getNextSourceIndex,
+  readPlaybackSignal,
   sourceLabel,
 } from "../../utils/video-sources";
 
 const PREFERRED_SOURCE_KEY = "xmovies:preferred-source";
 export const LOAD_TIMEOUT_MS = 15000;
+// How long a provider that posts playback messages gets after onLoad to say
+// it's ready. Measured ~2-3s for a playable title; its error pages never do.
+export const READY_TIMEOUT_MS = 10000;
 
-type Status = "loading" | "loaded" | "failed";
+// Only for sources with `signals`: "awaiting" means the iframe loaded but the
+// provider hasn't confirmed the title is playable yet; "engaged" means the
+// viewer clicked into it meanwhile, so it no longer times out.
+type Status = "loading" | "awaiting" | "engaged" | "loaded" | "failed";
+
+const isUnconfirmed = (status: Status) =>
+  status === "loading" || status === "awaiting" || status === "engaged";
 
 interface EmbedPlayerProps {
   media: MediaRequest;
@@ -50,16 +60,19 @@ type PlayerAction =
   | { type: "select"; index: number }
   | { type: "restore"; index: number }
   | { type: "reset" }
+  | { type: "frameLoaded" }
   | { type: "loaded" }
+  | { type: "engaged" }
   | { type: "timeout"; total: number }
+  | { type: "error"; total: number }
   | { type: "retry" };
 
 const initialState: PlayerState = { index: 0, tried: new Set(), status: "loading", attempt: 0 };
 
 export function playerReducer(state: PlayerState, action: PlayerAction): PlayerState {
   switch (action.type) {
-    // Only timeouts mark a source as failed; switching away by hand doesn't,
-    // so a source that already worked stays available as a fallback.
+    // Only timeouts and provider errors mark a source as failed; switching
+    // away by hand doesn't, so a source that worked stays available as a fallback.
     case "select":
       // Re-selecting the current source: keep a playing video as is, otherwise
       // force a fresh load (new iframe key + timeout) instead of a stuck spinner
@@ -71,10 +84,20 @@ export function playerReducer(state: PlayerState, action: PlayerAction): PlayerS
       return { ...state, index: action.index, tried: new Set(), status: "loading" };
     case "reset":
       return { ...state, tried: new Set(), status: "loading" };
+    case "frameLoaded":
+      return state.status === "loading" ? { ...state, status: "awaiting" } : state;
     case "loaded":
       return { ...state, status: "loaded" };
-    case "timeout": {
-      if (state.status !== "loading") return state;
+    case "engaged":
+      return state.status === "awaiting" ? { ...state, status: "engaged" } : state;
+    // A viewer using the player stops the timeouts, not a provider's own error
+    case "timeout":
+    case "error": {
+      const failing =
+        action.type === "error"
+          ? isUnconfirmed(state.status)
+          : state.status === "loading" || state.status === "awaiting";
+      if (!failing) return state;
       const tried = new Set(state.tried).add(state.index);
       const next = getNextSourceIndex(state.index, action.total, tried);
       return next === null
@@ -100,6 +123,7 @@ const EmbedPlayer = ({
   );
   const [state, dispatch] = useReducer(playerReducer, initialState);
   const { status, tried, attempt } = state;
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // localStorage is only available after hydration
   useEffect(() => {
@@ -121,14 +145,62 @@ const EmbedPlayer = ({
 
   // Cross-origin iframes give no error signal, so a source that never fires
   // onLoad within the timeout is treated as dead and the next one is tried.
+  // Providers with `signals` also have to say they're ready after onLoad,
+  // since their "not found" pages load just fine.
   useEffect(() => {
     if (!url) return;
+    const delay =
+      status === "loading" ? LOAD_TIMEOUT_MS : status === "awaiting" ? READY_TIMEOUT_MS : null;
+    if (delay === null) return;
     const timer = window.setTimeout(
       () => dispatch({ type: "timeout", total: availableSources.length }),
-      LOAD_TIMEOUT_MS
+      delay
     );
     return () => window.clearTimeout(timer);
-  }, [url, attempt, availableSources.length]);
+  }, [url, attempt, status, availableSources.length]);
+
+  // Remember the source that actually played (not just the one clicked), so a
+  // dead source doesn't cost every later visit a full timeout.
+  const confirmPlaying = () => {
+    dispatch({ type: "loaded" });
+    if (source) writePreferredSource(source.id);
+    onLoad?.();
+  };
+
+  const hasSignals = Boolean(source?.signals);
+
+  // Re-subscribes every render so the handler sees the current source and onLoad
+  useEffect(() => {
+    if (!url || !hasSignals || !isUnconfirmed(status)) return;
+    const handleMessage = (event: MessageEvent) => {
+      // Only the current iframe, from the provider's own origin
+      if (!iframeRef.current || event.source !== iframeRef.current.contentWindow) return;
+      const signal = readPlaybackSignal(source, event);
+      if (signal === "ready") confirmPlaying();
+      else if (signal === "error") dispatch({ type: "error", total: availableSources.length });
+    };
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  });
+
+  // Clicking into a cross-origin iframe blurs our window and focuses the
+  // iframe; a viewer who is already using the player shouldn't lose it.
+  useEffect(() => {
+    if (status !== "awaiting") return;
+    let check: number | undefined;
+    const handleBlur = () => {
+      check = window.setTimeout(() => {
+        if (iframeRef.current && document.activeElement === iframeRef.current) {
+          dispatch({ type: "engaged" });
+        }
+      }, 0);
+    };
+    window.addEventListener("blur", handleBlur);
+    return () => {
+      window.removeEventListener("blur", handleBlur);
+      window.clearTimeout(check);
+    };
+  }, [status]);
 
   const nextIndex = getNextSourceIndex(
     safeIndex,
@@ -138,12 +210,9 @@ const EmbedPlayer = ({
 
   const selectSource = (index: number) => dispatch({ type: "select", index });
 
-  // Remember the source that actually loaded (not just the one clicked), so a
-  // dead source doesn't cost every later visit a full timeout.
   const handleLoad = () => {
-    dispatch({ type: "loaded" });
-    if (source) writePreferredSource(source.id);
-    onLoad?.();
+    if (hasSignals) dispatch({ type: "frameLoaded" });
+    else confirmPlaying();
   };
 
   const retry = () => dispatch({ type: "retry" });
@@ -175,6 +244,7 @@ const EmbedPlayer = ({
         {url && (
           <iframe
             key={`${url}#${attempt}`}
+            ref={iframeRef}
             src={url}
             title={title ? `Watch ${title}` : "Video player"}
             onLoad={handleLoad}

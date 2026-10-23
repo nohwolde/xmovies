@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import EmbedPlayer, { LOAD_TIMEOUT_MS } from "../components/player/EmbedPlayer";
+import EmbedPlayer, { LOAD_TIMEOUT_MS, READY_TIMEOUT_MS } from "../components/player/EmbedPlayer";
 import { VideoSource } from "../utils/video-sources";
 
 const makeSource = (id: string): VideoSource => ({
@@ -13,8 +13,28 @@ const makeSource = (id: string): VideoSource => ({
 const SOURCES = [makeSource("a"), makeSource("b"), makeSource("c")];
 const movie = { type: "movie" as const, id: "550" };
 
+// A provider that posts {type:"ready"} / {type:"error"} from its own origin
+const makeSignalSource = (id: string): VideoSource => ({
+  ...makeSource(id),
+  signals: {
+    origin: `https://${id}.test`,
+    parseMessage: (data: any) => (data?.type === "ready" || data?.type === "error" ? data.type : null),
+  },
+});
+
 const iframeSrc = () => screen.queryByTitle(/watch|video player/i)?.getAttribute("src") ?? null;
 const loadIframe = () => fireEvent.load(screen.getByTitle(/watch|video player/i));
+const getIframe = () => screen.getByTitle(/watch|video player/i) as HTMLIFrameElement;
+
+const postMessage = (
+  data: unknown,
+  origin: string,
+  source: Window | null = getIframe().contentWindow
+) => {
+  act(() => {
+    window.dispatchEvent(new MessageEvent("message", { data, origin, source }));
+  });
+};
 
 describe("EmbedPlayer", () => {
   beforeEach(() => {
@@ -207,5 +227,148 @@ describe("EmbedPlayer", () => {
 
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Try Source/ })).toBeInTheDocument();
+  });
+
+  describe("with provider playback signals", () => {
+    const SIGNAL_SOURCES = [makeSignalSource("a"), makeSignalSource("b"), makeSource("c")];
+
+    it("fails over as soon as the provider reports an error", () => {
+      render(<EmbedPlayer media={movie} sources={SIGNAL_SOURCES} />);
+      loadIframe();
+
+      postMessage({ type: "error" }, "https://a.test");
+
+      expect(iframeSrc()).toBe("https://b.test/m/550");
+      expect(screen.getByRole("status")).toBeInTheDocument();
+    });
+
+    it("ignores messages from other origins or other windows", () => {
+      render(<EmbedPlayer media={movie} sources={SIGNAL_SOURCES} />);
+      loadIframe();
+
+      postMessage({ type: "error" }, "https://b.test");
+      postMessage({ type: "error" }, "https://a.test.evil.example");
+      postMessage({ type: "error" }, "https://a.test", window);
+      expect(iframeSrc()).toBe("https://a.test/m/550");
+
+      // nor does a "ready" from the wrong origin count as playing
+      postMessage({ type: "ready" }, "https://evil.test");
+      act(() => {
+        vi.advanceTimersByTime(READY_TIMEOUT_MS);
+      });
+      expect(iframeSrc()).toBe("https://b.test/m/550");
+    });
+
+    it("fails over when the page loads but the provider never says it's ready", () => {
+      const onLoad = vi.fn();
+      render(<EmbedPlayer media={movie} sources={SIGNAL_SOURCES} onLoad={onLoad} />);
+      loadIframe();
+
+      // the provider's page is visible while we wait, so no spinner
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+      act(() => {
+        vi.advanceTimersByTime(READY_TIMEOUT_MS - 1);
+      });
+      expect(iframeSrc()).toBe("https://a.test/m/550");
+
+      act(() => {
+        vi.advanceTimersByTime(1);
+      });
+      expect(iframeSrc()).toBe("https://b.test/m/550");
+      expect(onLoad).not.toHaveBeenCalled();
+      expect(window.localStorage.getItem("xmovies:preferred-source")).toBeNull();
+    });
+
+    it("keeps and remembers a source once it says it's ready", () => {
+      const onLoad = vi.fn();
+      render(<EmbedPlayer media={movie} sources={SIGNAL_SOURCES} onLoad={onLoad} />);
+      loadIframe();
+      expect(window.localStorage.getItem("xmovies:preferred-source")).toBeNull();
+
+      postMessage({ type: "ready" }, "https://a.test");
+      postMessage({ type: "ready" }, "https://a.test");
+
+      expect(onLoad).toHaveBeenCalledTimes(1);
+      expect(window.localStorage.getItem("xmovies:preferred-source")).toBe("a");
+
+      // a later error from a source that played doesn't switch it away
+      postMessage({ type: "error" }, "https://a.test");
+      act(() => {
+        vi.advanceTimersByTime(LOAD_TIMEOUT_MS * 2);
+      });
+      expect(iframeSrc()).toBe("https://a.test/m/550");
+    });
+
+    it("accepts a ready message that arrives before onLoad", () => {
+      render(<EmbedPlayer media={movie} sources={SIGNAL_SOURCES} />);
+
+      postMessage({ type: "ready" }, "https://a.test");
+      loadIframe();
+      act(() => {
+        vi.advanceTimersByTime(LOAD_TIMEOUT_MS * 2);
+      });
+
+      expect(iframeSrc()).toBe("https://a.test/m/550");
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    });
+
+    it("leaves the player alone once the viewer clicks into it", () => {
+      render(<EmbedPlayer media={movie} sources={SIGNAL_SOURCES} />);
+      loadIframe();
+
+      act(() => {
+        getIframe().focus();
+        window.dispatchEvent(new Event("blur"));
+        vi.advanceTimersByTime(READY_TIMEOUT_MS * 2);
+      });
+
+      expect(iframeSrc()).toBe("https://a.test/m/550");
+      expect(window.localStorage.getItem("xmovies:preferred-source")).toBeNull();
+
+      // and still remembers it once it starts playing
+      postMessage({ type: "ready" }, "https://a.test");
+      expect(window.localStorage.getItem("xmovies:preferred-source")).toBe("a");
+    });
+
+    it("keeps today's onLoad behaviour for silent providers", () => {
+      render(<EmbedPlayer media={movie} sources={SIGNAL_SOURCES} />);
+      loadIframe();
+      postMessage({ type: "error" }, "https://a.test");
+      loadIframe();
+      postMessage({ type: "error" }, "https://b.test");
+      expect(iframeSrc()).toBe("https://c.test/m/550");
+
+      loadIframe();
+      // c has no adapter, so even a message from its origin means nothing
+      postMessage({ type: "error" }, "https://c.test");
+      act(() => {
+        vi.advanceTimersByTime(LOAD_TIMEOUT_MS * 2);
+      });
+
+      expect(iframeSrc()).toBe("https://c.test/m/550");
+      expect(window.localStorage.getItem("xmovies:preferred-source")).toBe("c");
+    });
+
+    it("shows the all-failed alert when every provider errors", () => {
+      render(<EmbedPlayer media={movie} sources={SIGNAL_SOURCES.slice(0, 2)} />);
+
+      postMessage({ type: "error" }, "https://a.test");
+      postMessage({ type: "error" }, "https://b.test");
+
+      expect(screen.getByRole("alert")).toHaveTextContent(/none of the sources/i);
+    });
+
+    it("falls back to a source that played when a manual pick errors", () => {
+      render(<EmbedPlayer media={movie} sources={SIGNAL_SOURCES.slice(0, 2)} />);
+      loadIframe();
+      postMessage({ type: "ready" }, "https://a.test");
+
+      fireEvent.click(screen.getByRole("button", { name: "Source b" }));
+      loadIframe();
+      postMessage({ type: "error" }, "https://b.test");
+
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(iframeSrc()).toBe("https://a.test/m/550");
+    });
   });
 });
