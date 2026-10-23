@@ -1,35 +1,22 @@
-import React, { useEffect, useState } from 'react'
-import Container from '../components/container/Container'
-import {useSelector} from "react-redux"
-import Layout from '../components/layout/Layout'
-import Header from '../components/Header'
+import React from "react";
+import { useSelector } from "react-redux";
+import Container from "../components/container/Container";
+import Layout from "../components/layout/Layout";
 
 function MyList() {
-    const {MyList} = useSelector((state:any)=>state)
-    const [data,setData] = useState<any>([])
-
-useEffect(() => {
-  fetchData()
-},[])
-
-    const fetchData = async () => {
-      let url = `https://api.themoviedb.org/3/trending/tv/week?api_key=cfe422613b250f702980a3bbf9e90716`;
-      let req = await fetch(url);
-      let res = await req.json();
-      setData(res.results)
-    }
+  const myList: any[] = useSelector((state: any) => state.MyList) ?? [];
+  const items = [...myList].sort((a, b) => (b.time ?? 0) - (a.time ?? 0));
 
   return (
-    <>
-      <Header Data={data}/>
     <Layout title="My List">
-      <div className="mt-[-10rem]">
-    <Container Data={MyList} heading="My List" place="" />
-    </div>
+      <Container
+        Data={items}
+        heading="My List"
+        subheading={items.length ? `${items.length} saved title${items.length > 1 ? "s" : ""}` : undefined}
+        emptyMessage="Your list is empty. Use the + button on any title to save it here."
+      />
     </Layout>
-    </>
-
-  )
+  );
 }
 
-export default MyList
+export default MyList;

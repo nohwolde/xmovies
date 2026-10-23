@@ -1,40 +1,24 @@
-import { useRouter } from 'next/router'
-import React, { useEffect, useState } from 'react'
-import Container from '../../components/container/Container'
-import Layout from '../../components/layout/Layout'
-const axios = require("axios")
+import React from "react";
+import Container from "../../components/container/Container";
+import Layout from "../../components/layout/Layout";
+import { usePageParam, useTmdbPage } from "../../hooks/useTmdbPage";
 
 function Movies() {
-    const [data,setData] = useState<any>([])
-    const router = useRouter()
-    const {page} = router.query
-    console.log(page)
-
-    useEffect(() => {
-        const mv = fetchMovies()
-
-        return () => {
-          mv
-        }
-    },[page])
-
-
-    const fetchData = async () => {
-      let url = `https://api.consumet.org/meta/tmdb/info/60735`
-      let req = await fetch(url)
-    }
-
-    const fetchMovies = async () => {
-      let req  = await axios.get(`https://api.themoviedb.org/3/discover/movie?sort_by=popularity.desc&page=${page}&api_key=cfe422613b250f702980a3bbf9e90716`)
-      let res = req.data
-      setData(res.results)
-  }
+  const page = usePageParam();
+  const { items, totalPages, loading } = useTmdbPage("/discover/movie", { sort_by: "popularity.desc", page });
 
   return (
-    <Layout title={"Movies"}>
-    <Container Data={data} heading="Movies" place='movies' />
+    <Layout title="Movies">
+      <Container
+        Data={items}
+        heading="Movies"
+        subheading="The most popular movies right now"
+        mediaType="movie"
+        loading={loading}
+        pagination={{ basePath: "/movies", page, totalPages }}
+      />
     </Layout>
-  )
+  );
 }
 
-export default Movies
+export default Movies;

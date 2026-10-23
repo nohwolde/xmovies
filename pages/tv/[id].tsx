@@ -1,396 +1,279 @@
-import { GetServerSideProps } from "next";
-import dynamic from "next/dynamic";
-
-import Link from "next/link";
+import Head from "next/head";
 import { useRouter } from "next/router";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
+import { FaPlay } from "react-icons/fa";
+import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
-const Container = dynamic(() => import("../../components/container/Container"));
+import DetailContainer from "../../components/details/DetailContainer";
+import MediaRow, { RowShell } from "../../components/media/MediaRow";
+import PersonCard from "../../components/media/PersonCard";
+import { SetContinueWatching, SetCurrentState } from "../../redux/actions/tvShowAction";
+import { MediaItem, formatRuntime, getTitle, imageUrl, tmdb } from "../../lib/tmdb";
 
-import { addToMyList, removeFromList } from "../../redux/actions/myListAction";
-import {
-  SetContinueWatching,
-  SetCurrentEpisode,
-  SetCurrentSeason,
-  SetCurrentState,
-} from "../../redux/actions/tvShowAction";
-import { AnimatePresence, motion } from "framer-motion";
-import { currentEpisode } from "../../redux/reducers/tvShowReducer";
-import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
-const DetailContainer = dynamic(
-  () => import("../../components/details/DetailContainer")
-);
-const HomeContainer = dynamic(
-  () => import("../../components/container/HomeContainer")
-);
-const axios = require("axios");
+const SOURCES = [
+  { name: "Vidsrc", baseUrl: "https://vidsrcme.su/embed/tv/" },
+  { name: "VidsrcPro", baseUrl: "https://vidsrc.pro/embed/tv/" },
+];
 
-function TvEpisode(res: any) {
-  const [data, setData] = useState<any>(res.res);
-  const [recommended, setRecommended] = useState<any>([]);
-  const [sEpisodes, setSEpisodes] = useState<any>(null);
+interface Episode {
+  episode_number: number;
+  season_number: number;
+  name: string;
+  overview?: string;
+  still_path?: string | null;
+  runtime?: number | null;
+  air_date?: string | null;
+}
+
+// Episodes per season, cached by "<showId>:<season>"
+function useSeasonEpisodes(showId: string | undefined, seasons: number[]) {
+  const [cache, setCache] = useState<Record<string, Episode[]>>({});
+  const key = seasons.join(",");
+
+  useEffect(() => {
+    if (!showId) return;
+    seasons
+      .filter((s) => !cache[`${showId}:${s}`])
+      .forEach((season) => {
+        const cacheKey = `${showId}:${season}`;
+        tmdb<{ episodes?: Episode[] }>(`/tv/${showId}/season/${season}`)
+          .then((res) => setCache((prev) => ({ ...prev, [cacheKey]: res.episodes ?? [] })))
+          .catch(() => setCache((prev) => ({ ...prev, [cacheKey]: [] })));
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showId, key]);
+
+  return (season: number): Episode[] | undefined => cache[`${showId}:${season}`];
+}
+
+function TvEpisode({ res: data }: { res: MediaItem }) {
   const router = useRouter();
-  const { id } = router.query;
-  const eps: any = [];
-  const [currentSeason, setCurrentSeason] = useState(1);
-  const [showSeasons, setShowSeasons] = useState(true);
-  const ref = useRef();
-  const [click, setClick] = useState(false);
-  const [isOpen, setIsOpen] = useState(false);
-  const [notification, setNotification] = useState(false);
-  const [casts, setCasts] = useState<any>([]);
-  const [firstEpName, setFirstEpName] = useState("");
-
-  const [baseUrl, setBaseUrl] = useState<string>("https://vidsrcme.su/embed/tv/");
-
-  const { MyList, CurrentState, ContinueWatching } = useSelector(
-    (state: any) => state
-  );
+  const id = router.query.id as string | undefined;
   const dispatch = useDispatch();
-  const dataState: any = { ep_num: 1, season: 1 };
-  CurrentState?.filter((item: any) => {
-    if (item.id == id) {
-      dataState["ep_num"] = item.episode_number;
-      dataState["season"] = item.season_number;
-      dataState["ep_name"] = item.episode_name;
-      dataState["episode_image"] = item.episode_image;
+  const currentState: any[] = useSelector((state: any) => state.CurrentState) ?? [];
+  const saved = currentState.find((item) => item.id == id);
+  const playing = { season: saved?.season_number ?? 1, episode: saved?.episode_number ?? 1 };
+
+  const [viewSeason, setViewSeason] = useState(playing.season);
+  const [baseUrl, setBaseUrl] = useState<string>(SOURCES[0].baseUrl);
+  useEffect(() => setViewSeason(playing.season), [id, playing.season]);
+
+  const seasons: any[] = (data?.seasons ?? []).filter((s: any) => s.season_number > 0 && s.air_date);
+  const episodesFor = useSeasonEpisodes(id, viewSeason === playing.season ? [viewSeason] : [viewSeason, playing.season]);
+  const viewEpisodes = episodesFor(viewSeason);
+  const playingEpisodes = episodesFor(playing.season) ?? [];
+  const playingEpisode = playingEpisodes.find((ep) => ep.episode_number === playing.episode);
+  const lastSeason = seasons.length ? seasons[seasons.length - 1].season_number : 1;
+
+  const playEpisode = (ep: Pick<Episode, "season_number" | "episode_number"> & Partial<Episode>, scroll = true) => {
+    dispatch(
+      SetCurrentState({
+        id,
+        episode_number: ep.episode_number,
+        episode_name: ep.name ?? "",
+        season_number: ep.season_number,
+        episode_image: ep.still_path,
+      })
+    );
+    if (scroll) document.getElementById("watch")?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const hasPrev = playing.episode > 1 || playing.season > 1;
+  const hasNext = playing.episode < playingEpisodes.length || playing.season < lastSeason;
+
+  const goPrev = () => {
+    if (playing.episode > 1) {
+      const ep = playingEpisodes.find((e) => e.episode_number === playing.episode - 1);
+      playEpisode(ep ?? { season_number: playing.season, episode_number: playing.episode - 1 }, false);
+    } else if (playing.season > 1) {
+      const prevSeason = seasons.find((s) => s.season_number === playing.season - 1);
+      playEpisode({ season_number: playing.season - 1, episode_number: prevSeason?.episode_count ?? 1 }, false);
     }
-  });
+  };
 
-  console.log(currentEpisode);
-  useEffect(() => {
-    const ce = setCurrentSeason(dataState.season);
-
-    return ce;
-  }, []);
-
-  useEffect(() => {
-    fetchCasts();
-    fetchRecommended();
-    fetchSeasonEpisodes();
-    setData(res.res);
-
-    const current = MyList?.filter((item: any) => item.id == id);
-    current.length > 0 ? setClick(true) : setClick(false);
-  }, [id, currentSeason, firstEpName, res]);
+  const goNext = () => {
+    if (playing.episode < playingEpisodes.length) {
+      const ep = playingEpisodes.find((e) => e.episode_number === playing.episode + 1);
+      playEpisode(ep ?? { season_number: playing.season, episode_number: playing.episode + 1 }, false);
+    } else if (playing.season < lastSeason) {
+      playEpisode({ season_number: playing.season + 1, episode_number: 1 }, false);
+    }
+  };
 
   const handleIframe = () => {
-    if (dataState.length < 1) {
-      dataState["ep_name"] = firstEpName;
-      dataState["episode_image"] = sEpisodes[0]?.still_path;
-    }
     dispatch(
       SetContinueWatching({
-        id: id,
+        id,
         poster_path: data?.poster_path,
-        backdrop_path: dataState?.episode_image || sEpisodes[0].still_path,
+        backdrop_path: playingEpisode?.still_path || data?.backdrop_path,
         title: data?.name,
-        season: dataState?.season || 1,
-        episode: dataState?.ep_num || 1,
-        episode_name: dataState?.ep_name || sEpisodes[0].name,
+        season: playing.season,
+        episode: playing.episode,
+        episode_name: playingEpisode?.name ?? saved?.episode_name ?? "",
         media_type: "tv",
         time: Date.now(),
       })
     );
   };
 
-  const fetchCasts = async () => {
-    const url = `https://api.themoviedb.org/3/tv/${id}/credits?api_key=cfe422613b250f702980a3bbf9e90716`;
-    let req = await axios.get(url);
-    let res = req.data;
-    setCasts(res.cast);
-  };
-  const fetchSeasonEpisodes = async () => {
-    let url = `https://api.themoviedb.org/3/tv/${id}/season/${currentSeason}?api_key=cfe422613b250f702980a3bbf9e90716`;
-    let req = await axios.get(url);
-    let res = req.data;
-    setSEpisodes(res.episodes);
-    setFirstEpName(res.episodes[0]?.name);
-  };
-
-  const fetchRecommended = async () => {
-    const url = `https://api.themoviedb.org/3/tv/${id}/recommendations?api_key=cfe422613b250f702980a3bbf9e90716`;
-    let req = await axios.get(url);
-    let res = req.data;
-    setRecommended(res.results);
-  };
-
-  const last_air = Date.parse(data.last_air_date);
+  if (!data?.id) return null;
 
   return (
     <>
-      <div className="w-full relative mx-auto">
-        <DetailContainer {...data} media_type="tv" />
-        <div className="px-1 lg:px-6 mx-auto">
+      <Head>
+        <title>{`${getTitle(data)} | NMOVIES`}</title>
+        <meta name="description" content={data.overview} />
+      </Head>
+
+      <DetailContainer {...data} media_type="tv" />
+
+      <section id="watch" className="scroll-mt-24 px-4 md:px-12" aria-label="Watch">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <div className="flex flex-col">
-              <div className="flex">
-                <div className="w-full">
-                  <div className="flex items-center justify-between">
-                    {/* make 2 buttons that will switch the prefix of the source */}
-                    <div className="flex items-center">
-                      <div className="flex items-center gap-2 p-2 bg-[#0e0c8d] rounded-md text-white m-2">
-                        Sources
-                      </div>
-                      <div className="flex items-center gap-2 p-2 bg-[#0e0c8d] rounded-md text-white m-2">
-                        <button onClick={() => {if(baseUrl !== 'https://vidsrcme.su/embed/movie/')setBaseUrl('https://vidsrcme.su/embed/tv/')}}className={`flex items-center gap-2 p-2 ${baseUrl == 'https://vidsrcme.su/embed/tv/'?  'bg-[#0e54bc]' : ' bg-[#2f2f2f]'}  rounded-md text-white m-2`}>
-                          <span>Vidsrc</span>
-                        </button>
-                        <button onClick={() => {if(baseUrl !== 'https://vidsrc.pro/embed/movie/')setBaseUrl('https://vidsrc.pro/embed/tv/')}} className={`flex items-center gap-2 p-2 ${baseUrl == 'https://vidsrc.pro/embed/tv/'?  'bg-[#0e54bc]' : ' bg-[#2f2f2f]'} rounded-md text-white`}>
-                          <span>VidsrcPro</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                  <iframe
-                    onLoadCapture={handleIframe}
-                    className=" w-full h-[300px] lg:h-[750px] mx-auto "
-                    src={`${baseUrl}${id}/${dataState?.season}/${dataState?.ep_num}`}
-                    allowFullScreen
-                    
-                  ></iframe>
-                  <div className="flex gap-1 p-1.5 justify-end">
-                    {dataState.ep_num > 1 && (
-
-                    <button
-                     onClick={() => {
-
-                      const filterEp = sEpisodes.filter((t:any) => t.episode_number === parseInt(dataState.ep_num) -   1 )[0]
-                      dispatch(
-                        SetCurrentState({
-                          id: id,
-                          episode_number: parseInt(dataState.ep_num) - 1,
-                          episode_name: filterEp.name,
-                          season_number: filterEp.season_number,
-                          episode_image: filterEp.still_path,
-                        })
-                      );
-                    }}
-                      className="px-5 py-2 bg-neutral-800 hover:bg-[#4815ff] rounded-l-full flex items-center gap-3"
-                    >
-                      <span><FaChevronLeft /></span>
-                      Prev Ep
-                    </button>
-                    )}
-
-{dataState.ep_num < sEpisodes?.length && (
-  <button 
-                    onClick={() => {
-
-                      const filterEp = sEpisodes.filter((t:any) => t.episode_number === parseInt(dataState.ep_num) + 1)[0]
-                      dispatch(
-                        SetCurrentState({
-                          id: id,
-                          episode_number: parseInt(dataState.ep_num) + 1,
-                          episode_name: filterEp.name,
-                          season_number: filterEp.season_number,
-                          episode_image: filterEp.still_path,
-                        })
-                      );
-                    }}
-                     className="px-5 py-2 bg-neutral-800 hover:bg-[#4815ff] rounded-r-full flex items-center gap-3">
-                      Next Ep
-                      <span>
-                        <FaChevronRight />
-                      </span>
-                    </button>
-) }
-                    
-                  </div>
-                </div>
-
-                
-              </div>
-
-              <div className="p-1">
-              <div
-                onClick={() => {
-                  setShowSeasons(!showSeasons);
-                  setIsOpen(!isOpen);
-                }}
-                className="bg-stone-900 mt-6  w-fit rounded-sm  my-3 font-semibold text-center cursor-pointer p-3 flex  justify-between  gap-10 items-center hover:bg-neutral-900"
-              >
-                Seasons
-                <span>
-                  {showSeasons ? (
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      strokeWidth={2.5}
-                      stroke="currentColor"
-                      className="w-4 h-4"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M4.5 15.75l7.5-7.5 7.5 7.5"
-                      />
-                    </svg>
-                  ) : (
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      strokeWidth={2.5}
-                      stroke="currentColor"
-                      className="w-4 h-4"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M19.5 8.25l-7.5 7.5-7.5-7.5"
-                      />
-                    </svg>
-                  )}
-                </span>
-              </div>
-              <div className="flex flex-col  w-full   overflow-y-scroll gap-2 ">
-                  <AnimatePresence>
-                    {showSeasons && (
-                      <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{
-                          opacity: 1,
-                          type: "spring",
-                          transition: { duration: 0.3 },
-                        }}
-                        exit={{
-                          opacity: 0,
-                          transition: { duration: 0.3 },
-                        }}
-                        className={`flex flex-wrap   gap-2  mx-2 transition-all`}
-                      >
-                        {data?.seasons
-                          ?.filter((f: any) => f.name !== "Specials")
-                          .map((s: any) => {
-                            return (
-                              s.air_date != null && (
-                                <div
-                                  className={`${
-                                    s.season_number === dataState?.season
-                                      ? "bg-[#4815ff]"
-                                      : "bg-neutral-900"
-                                  }  cursor-pointer  text-center hover:bg-[#4815ff] overflow-hidden text-ellipsis whitespace-nowrap	 rounded-md    transition-all`}
-                                  key={s.season_number}
-                                  onClick={() => {
-                                    setCurrentSeason(s.season_number);
-                                  }}
-                                >
-                                  <img
-                                    src={
-                                      `https://image.tmdb.org/t/p/original//${s?.poster_path}` ||
-                                      "https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/No-Image-Placeholder.svg/330px-No-Image-Placeholder.svg.png"
-                                    }
-                                    className="max-h-[200px] lg:max-h-[240px] w-full object-cover"
-                                  />
-
-                                  <h1 className="p-2">{s.name}</h1>
-                                </div>
-                              )
-                            );
-                          })}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-                <h1 className="py-3 text-xl font-medium">Episodes:</h1>
-
-                <div className=" grid grid-cols-1 lg:grid-cols-6 gap-1 w-full overflow-y-scroll lg:max-w-">
-                  {sEpisodes?.map((ep: any) => (
-                    <div
-                      key={ep.episode_number}
-                      onClick={() => {
-                        dispatch(
-                          SetCurrentState({
-                            id: id,
-                            episode_number: ep.episode_number,
-                            episode_name: ep.name,
-                            season_number: ep.season_number,
-                            episode_image: ep.still_path,
-                          })
-                        );
-                      }}
-                    >
-                      <div className="">
-                        {/* <img
-                          className="flex-shrink-0 w-full h-[170px] rounded-sm object-cover"
-                          src={`https://www.themoviedb.org/t/p/original${ep.still_path}`}
-                          // src="https://i.imgur.com/Xj42miJg.jpg"
-                          alt={ep.title}
-                        /> */}
-                        {/* <small className="bg-neutral-900/80 font-black py-0.5 px-1.5 absolute top-0 left-0 rounded-br-lg">
-                  {ep.episode_number}
-                </small> */}
-                        {/* <small className=" font-lighter p-0.5 ">
-                  {ep.name || "Episode " + ep.episode_number}
-                </small> */}
-                      </div>
-
-                      <h1
-                        style={{ color: "white" }}
-                        className={`${
-                          ep.episode_number === dataState?.ep_num &&
-                          ep.season_number === dataState?.season
-                            ? "bg-[#4815ff]"
-                            : "bg-neutral-900"
-                        } drop-shadow-xl p-3 overflow-hidden text-ellipsis	whitespace-nowrap	 transition-all font-semibold  cursor-pointer hover:bg-[#4815ff]`}
-                      >
-                        Ep {ep.episode_number}:{" "}
-                        <span className="font-light text-gray-300 italic">
-                          {ep.name}
-                        </span>
-                      </h1>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              
-            </div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-white/40">Now playing</p>
+            <h2 className="text-lg md:text-xl font-bold">
+              S{playing.season} · E{playing.episode}
+              {playingEpisode?.name ? <span className="font-normal text-white/70"> — {playingEpisode.name}</span> : null}
+            </h2>
           </div>
-
-          <HomeContainer swiperId={0} Data={casts} heading="Casts" />
-
-          <Container
-            Data={recommended}
-            heading="YOU MAY ALSO LIKE"
-            place="tvshows"
-          />
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-medium text-white/60">Source:</span>
+            {SOURCES.map((source) => (
+              <button
+                key={source.baseUrl}
+                type="button"
+                aria-pressed={baseUrl === source.baseUrl}
+                onClick={() => setBaseUrl(source.baseUrl)}
+                className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
+                  baseUrl === source.baseUrl ? "bg-white text-black" : "bg-white/5 text-white/80 hover:bg-white/10"
+                }`}
+              >
+                {source.name}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+        <div className="overflow-hidden rounded-xl bg-black ring-1 ring-white/10">
+          <iframe
+            onLoadCapture={handleIframe}
+            className="aspect-video w-full"
+            src={`${baseUrl}${id}/${playing.season}/${playing.episode}`}
+            title={`Watch ${getTitle(data)} S${playing.season}E${playing.episode}`}
+            allowFullScreen
+          ></iframe>
+        </div>
+        <div className="mt-3 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={goPrev}
+            disabled={!hasPrev}
+            className="flex items-center gap-1 rounded-lg bg-white/5 px-4 py-2 text-sm font-medium hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-30"
+          >
+            <FiChevronLeft /> Prev episode
+          </button>
+          <button
+            type="button"
+            onClick={goNext}
+            disabled={!hasNext}
+            className="flex items-center gap-1 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-black hover:bg-white/85 disabled:cursor-not-allowed disabled:opacity-30"
+          >
+            Next episode <FiChevronRight />
+          </button>
+        </div>
+      </section>
+
+      <section className="mt-12 px-4 md:px-12" aria-label="Episodes">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg md:text-2xl font-bold tracking-tight">Episodes</h2>
+          {seasons.length > 0 && (
+            <select
+              value={viewSeason}
+              onChange={(e) => setViewSeason(Number(e.target.value))}
+              aria-label="Season"
+              className="rounded-lg border border-white/10 bg-surface-2 px-3 py-2 text-sm font-medium outline-none focus:ring-2 focus:ring-accent"
+            >
+              {seasons.map((s) => (
+                <option key={s.season_number} value={s.season_number}>
+                  {s.name} ({s.episode_count} ep)
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+
+        {!viewEpisodes ? (
+          <div className="grid gap-3 md:grid-cols-2" aria-hidden>
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-28 animate-pulse rounded-xl bg-white/5" />
+            ))}
+          </div>
+        ) : (
+          <ol className="grid gap-3 md:grid-cols-2">
+            {viewEpisodes.map((ep) => {
+              const active = ep.season_number === playing.season && ep.episode_number === playing.episode;
+              const still = imageUrl(ep.still_path, "w300");
+              return (
+                <li key={ep.episode_number}>
+                  <button
+                    type="button"
+                    onClick={() => playEpisode(ep)}
+                    aria-current={active ? "true" : undefined}
+                    className={`group flex w-full gap-4 rounded-xl p-2 text-left transition ${
+                      active ? "bg-white/10 ring-1 ring-white/30" : "hover:bg-white/5"
+                    }`}
+                  >
+                    <div className="relative aspect-video w-36 md:w-44 shrink-0 overflow-hidden rounded-lg bg-surface-2">
+                      {still && <img src={still} alt="" loading="lazy" className="h-full w-full object-cover" />}
+                      <span className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 transition group-hover:opacity-100">
+                        <FaPlay size={18} />
+                      </span>
+                      {active && (
+                        <span className="absolute bottom-1 left-1 rounded bg-badge px-1.5 py-0.5 text-[10px] font-bold uppercase">
+                          Playing
+                        </span>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1 py-1">
+                      <div className="flex items-baseline justify-between gap-2">
+                        <h3 className="line-clamp-1 font-semibold">
+                          {ep.episode_number}. {ep.name || `Episode ${ep.episode_number}`}
+                        </h3>
+                        {formatRuntime(ep.runtime) && (
+                          <span className="shrink-0 text-xs text-white/40">{formatRuntime(ep.runtime)}</span>
+                        )}
+                      </div>
+                      <p className="mt-1 line-clamp-2 text-xs md:text-sm text-white/55">{ep.overview || ep.air_date}</p>
+                    </div>
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+        )}
+      </section>
+
+      <RowShell title="Cast" itemClassName="w-[28%] sm:w-[18%] md:w-[13%] lg:w-[10%]">
+        {(data.credits?.cast ?? []).slice(0, 20).map((person: MediaItem) => (
+          <PersonCard key={person.id} item={person} />
+        ))}
+      </RowShell>
+
+      <MediaRow title="More Like This" items={data.recommendations?.results ?? []} mediaType="tv" />
     </>
   );
 }
-
-// TvEpisode.getInitialProps = async (context:any) => {
-//   let id = context.params.id;
-//   let url = `https://api.themoviedb.org/3/tv/${id}?api_key=cfe422613b250f702980a3bbf9e90716`;
-//   let req = await fetch(url);
-//   let res = await req.json();
-
-//   return { props: { res } };
-// };
-
-// export const getServerSideProps: GetServerSideProps = async (context: any) => {
-//   let id = context.params.id;
-//   let url = `https://api.themoviedb.org/3/tv/${id}?api_key=cfe422613b250f702980a3bbf9e90716`;
-//   let req = await fetch(url);
-//   let res = await req.json();
-
-//   return { props: { res } };
-// };
 
 export async function getStaticPaths() {
   return { paths: [], fallback: "blocking" };
 }
 
 export const getStaticProps = async (context: any) => {
-  let id = context.params.id;
-  let url = `https://api.themoviedb.org/3/tv/${id}?api_key=cfe422613b250f702980a3bbf9e90716`;
-  let req = await fetch(url);
-  let res = await req.json();
-
-  return { props: { res } };
+  try {
+    const res = await tmdb(`/tv/${context.params.id}`, { append_to_response: "credits,recommendations,videos" });
+    return { props: { res }, revalidate: 60 * 60 * 24 };
+  } catch {
+    return { notFound: true };
+  }
 };
 
 export default TvEpisode;

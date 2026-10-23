@@ -1,49 +1,26 @@
-import Link from 'next/link'
-import { useRouter } from 'next/router'
-import React, { useEffect, useState } from 'react'
-import Container from '../../components/container/Container'
-import Pagination from '../../components/container/Pagination'
-import Layout from '../../components/layout/Layout'
-const axios = require("axios")
+import React, { useState } from "react";
+import Container from "../../components/container/Container";
+import Layout from "../../components/layout/Layout";
+import { usePageParam, useTmdbPage } from "../../hooks/useTmdbPage";
+import { MediaType } from "../../lib/tmdb";
 
+function TopRated() {
+  const page = usePageParam();
+  const [type, setType] = useState<MediaType>("movie");
+  const { items, totalPages, loading } = useTmdbPage(`/${type}/top_rated`, { page });
 
-
-
-function TopImdb() {
-    const [data,setData] = useState<any>([])
-    const [type,setType] = useState<any>('movie')
-    const router = useRouter()
-    const {page} = router.query
-
-    useEffect(() => {
-        topRated()
-
-    },[page,type])
-
-    const fetchData = async () => {
-        let req  = await fetch(`https://api.themoviedb.org/3/discover/movie?sort_by=popularity.desc&page=${page}&api_key=cfe422613b250f702980a3bbf9e90716`)
-        let res = await req.json()
-        console.log(res)
-        setData(res.results)
-    }
-
-    const topRated = async () => {
-        let req  = await axios.get(`https://api.themoviedb.org/3/${type}/top_rated?page=${page}&api_key=cfe422613b250f702980a3bbf9e90716`)
-        let res = await req.data
-        setData(res.results)
-    }
-    const handleChange = (e:any) => {
-        setType(e.target.value)
-    }
   return (
-    <Layout title={"Top Rated"}>
-    
-    <Container Data={data} heading={type === "movie" ? "Top Rated Movies" : "Top Rated Shows"} place="topimdb" handleChange={handleChange} />
-    
+    <Layout title="Top Rated">
+      <Container
+        Data={items}
+        heading="Top Rated"
+        subheading="All-time highest rated on TMDB"
+        loading={loading}
+        toggle={{ value: type, onChange: setType }}
+        pagination={{ basePath: "/topimdb", page, totalPages }}
+      />
     </Layout>
-  )
+  );
 }
 
-
-
-export default TopImdb
+export default TopRated;

@@ -1,45 +1,57 @@
 import Link from "next/link";
-import { useRouter } from "next/router";
-import React, { useEffect } from "react";
-import { FaArrowLeft, FaArrowRight } from "react-icons/fa";
+import React from "react";
+import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
 
 interface PaginationProps {
-  place: string;
+  // Path prefix without the page number, e.g. "/movies" or "/genre/Action-28"
+  basePath: string;
+  page: number;
+  totalPages?: number;
 }
 
-function Pagination(data: PaginationProps) {
-  const router = useRouter();
-  let p = parseInt(router.query.page as string);
-  const {slug} = router.query
-  let pp:any = slug && +slug?.[1]
+export function pageHref(basePath: string, page: number): string {
+  return `/${basePath.replace(/^\/+|\/+$/g, "")}/${page}`;
+}
 
-  
+function Pagination({ basePath, page, totalPages = 500 }: PaginationProps) {
+  const last = Math.min(totalPages, 500); // TMDB caps discover results at 500 pages
+  const pill = "flex h-10 min-w-[2.5rem] items-center justify-center gap-1 rounded-lg px-3 text-sm font-medium transition";
+  const pages = [page - 1, page, page + 1].filter((p) => p >= 1 && p <= last);
+
   return (
-    <nav className="relative mb-4 p-6">
-      <div className="flex justify-center items-center">
-          <Link
-            href={`/${data.place}/${p - 1 || pp - 1}`}
-            
+    <nav className="flex items-center justify-center gap-2 py-10" aria-label="Pagination">
+      {page > 1 ? (
+        <Link href={pageHref(basePath, page - 1)}>
+          <a className={`${pill} bg-white/5 hover:bg-white/10`} aria-label="Previous page">
+            <FiChevronLeft /> <span className="hidden sm:inline">Prev</span>
+          </a>
+        </Link>
+      ) : (
+        <span className={`${pill} bg-white/5 text-white/30`} aria-disabled="true">
+          <FiChevronLeft /> <span className="hidden sm:inline">Prev</span>
+        </span>
+      )}
+      {pages.map((p) => (
+        <Link href={pageHref(basePath, p)} key={p}>
+          <a
+            aria-current={p === page ? "page" : undefined}
+            className={`${pill} ${p === page ? "bg-white text-black" : "bg-white/5 hover:bg-white/10"}`}
           >
-        <span className=" cursor-pointer  py-2 px-3 ml-0  bg-[#00000094]  hover:bg-neutral-900">
-            <FaArrowLeft size={24} />
+            {p}
+          </a>
+        </Link>
+      ))}
+      {page < last ? (
+        <Link href={pageHref(basePath, page + 1)}>
+          <a className={`${pill} bg-white/5 hover:bg-white/10`} aria-label="Next page">
+            <span className="hidden sm:inline">Next</span> <FiChevronRight />
+          </a>
+        </Link>
+      ) : (
+        <span className={`${pill} bg-white/5 text-white/30`} aria-disabled="true">
+          <span className="hidden sm:inline">Next</span> <FiChevronRight />
         </span>
-          </Link>
-
-        <span className=" cursor-pointer  py-2 px-3 ml-0 font-semibold text-gray-200   ">
-          
-            Page {p || pp}
-        </span>
-
-          <Link
-            href={`/${data.place}/${p + 1 || pp + 1}`}
-            
-          >
-        <span className=" py-2 cursor-pointer px-3  bg-[#00000094] hover:bg-neutral-900">
-            <FaArrowRight size={24}/>
-        </span>
-          </Link>
-      </div>
+      )}
     </nav>
   );
 }
