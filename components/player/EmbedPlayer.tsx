@@ -1,15 +1,22 @@
 import React, { useEffect, useMemo, useReducer } from "react";
 import {
   MediaRequest,
+  SourceCategory,
   VideoSource,
   buildEmbedUrl,
   getAvailableSources,
   getInitialSourceIndex,
   getNextSourceIndex,
+  getSourceCategory,
+  sourceLabel,
 } from "../../utils/video-sources";
 import { useHydrated } from "../../hooks/useHydrated";
 
-const PREFERRED_SOURCE_KEY = "xmovies:preferred-source";
+// One preference per category: anime starts on vidrock, which shouldn't
+// carry over to regular movies. (Replaces the old global
+// "xmovies:preferred-source", whose saved values predate the new order.)
+export const preferredSourceKey = (category: SourceCategory) =>
+  `xmovies:preferred-source:${category}`;
 export const LOAD_TIMEOUT_MS = 15000;
 
 type Status = "loading" | "loaded" | "failed";
@@ -23,23 +30,25 @@ interface EmbedPlayerProps {
   onLoad?: () => void;
 }
 
-function readPreferredSource(): string | null {
+function readPreferredSource(category: SourceCategory): string | null {
   try {
-    return window.localStorage.getItem(PREFERRED_SOURCE_KEY);
+    return window.localStorage.getItem(preferredSourceKey(category));
   } catch {
     return null;
   }
 }
 
-function writePreferredSource(id: string) {
+function writePreferredSource(category: SourceCategory, id: string) {
   try {
-    window.localStorage.setItem(PREFERRED_SOURCE_KEY, id);
+    window.localStorage.setItem(preferredSourceKey(category), id);
   } catch {
     // storage unavailable (private mode, blocked cookies) — preference just isn't remembered
   }
 }
 
 interface PlayerState {
+  // The list `index` points into
+  sources: VideoSource[];
   index: number;
   tried: ReadonlySet<number>;
   status: Status;
@@ -48,13 +57,19 @@ interface PlayerState {
 
 type PlayerAction =
   | { type: "select"; index: number }
-  | { type: "restore"; index: number }
+  | { type: "restore"; sources: VideoSource[]; index: number }
   | { type: "reset" }
   | { type: "loaded" }
   | { type: "timeout"; total: number }
   | { type: "retry" };
 
-const initialState: PlayerState = { index: 0, tried: new Set(), status: "loading", attempt: 0 };
+const initState = (sources: VideoSource[]): PlayerState => ({
+  sources,
+  index: 0,
+  tried: new Set(),
+  status: "loading",
+  attempt: 0,
+});
 
 export function playerReducer(state: PlayerState, action: PlayerAction): PlayerState {
   switch (action.type) {
@@ -68,7 +83,7 @@ export function playerReducer(state: PlayerState, action: PlayerAction): PlayerS
       }
       return { ...state, index: action.index, status: "loading" };
     case "restore":
-      return { ...state, index: action.index, tried: new Set(), status: "loading" };
+      return { ...state, sources: action.sources, index: action.index, tried: new Set(), status: "loading" };
     case "reset":
       return { ...state, tried: new Set(), status: "loading" };
     case "loaded":
@@ -82,7 +97,7 @@ export function playerReducer(state: PlayerState, action: PlayerAction): PlayerS
         : { ...state, index: next, tried, status: "loading" };
     }
     case "retry":
-      return { index: 0, tried: new Set(), status: "loading", attempt: state.attempt + 1 };
+      return { ...initState(state.sources), attempt: state.attempt + 1 };
   }
 }
 
@@ -95,19 +110,28 @@ const EmbedPlayer = ({
   onLoad,
 }: EmbedPlayerProps) => {
   const availableSources = useMemo(
-    () => getAvailableSources(anime, sources),
-    [anime, sources]
+    () => getAvailableSources(media.type, anime, sources),
+    [media.type, anime, sources]
   );
-  const [state, dispatch] = useReducer(playerReducer, initialState);
+  const category = getSourceCategory(media.type, anime);
+  const [state, dispatch] = useReducer(playerReducer, availableSources, initState);
   const { status, tried, attempt } = state;
-
-  // localStorage is only available after hydration
-  useEffect(() => {
+  const restore = () =>
     dispatch({
       type: "restore",
-      index: getInitialSourceIndex(availableSources, readPreferredSource()),
+      sources: availableSources,
+      index: getInitialSourceIndex(availableSources, readPreferredSource(category)),
     });
-  }, [availableSources]);
+
+  // localStorage is only available after hydration, so the first render
+  // matches the server's (first source) and the preference is applied here
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(restore, []);
+
+  // The list changed while mounted (e.g. client-side navigation from a movie
+  // to an anime movie): pick its start source during render, so an index
+  // from the old list never mounts the wrong provider
+  if (state.sources !== availableSources) restore();
 
   const safeIndex = state.index < availableSources.length ? state.index : 0;
   const source = availableSources[safeIndex];
@@ -145,7 +169,7 @@ const EmbedPlayer = ({
   // dead source doesn't cost every later visit a full timeout.
   const handleLoad = () => {
     dispatch({ type: "loaded" });
-    if (source) writePreferredSource(source.id);
+    if (source) writePreferredSource(category, source.id);
     onLoad?.();
   };
 
@@ -168,7 +192,7 @@ const EmbedPlayer = ({
                   : "bg-white/5 text-white/80 hover:bg-white/10 hover:text-white"
               }`}
             >
-              {item.name}
+              {sourceLabel(item, index)}
             </button>
           ))}
         </div>
@@ -223,7 +247,7 @@ const EmbedPlayer = ({
             onClick={() => selectSource(nextIndex)}
             className="underline hover:text-white"
           >
-            Try {availableSources[nextIndex].name}
+            Try {sourceLabel(availableSources[nextIndex], nextIndex)}
           </button>
         </p>
       )}

@@ -1,30 +1,35 @@
 import { describe, expect, it } from "vitest";
 import {
-  VIDEO_SOURCES,
+  SOURCES_BY_CATEGORY,
   VideoSource,
   buildEmbedUrl,
   getAvailableSources,
+  getSourceCategory,
   getInitialSourceIndex,
   getNextSourceIndex,
   isAnime,
 } from "../utils/video-sources";
 
-const makeSource = (id: string, supportsAnime = true): VideoSource => ({
+const makeSource = (id: string): VideoSource => ({
   id,
   name: id,
-  supportsAnime,
   buildUrl: ({ type, id: mediaId, season, episode }) =>
     type === "movie" ? `https://${id}/m/${mediaId}` : `https://${id}/t/${mediaId}/${season}/${episode}`,
 });
 
-describe("VIDEO_SOURCES", () => {
-  it("has unique ids", () => {
-    const ids = VIDEO_SOURCES.map((s) => s.id);
-    expect(new Set(ids).size).toBe(ids.length);
+const ALL_SOURCES = Object.values(SOURCES_BY_CATEGORY).flat();
+
+describe("SOURCES_BY_CATEGORY", () => {
+  it("has unique ids within each list", () => {
+    for (const list of Object.values(SOURCES_BY_CATEGORY)) {
+      const ids = list.map((s) => s.id);
+      expect(new Set(ids).size).toBe(ids.length);
+      expect(list.length).toBeGreaterThanOrEqual(2);
+    }
   });
 
   it("builds https movie and tv urls for every source", () => {
-    for (const source of VIDEO_SOURCES) {
+    for (const source of ALL_SOURCES) {
       const movie = source.buildUrl({ type: "movie", id: 550 });
       const tv = source.buildUrl({ type: "tv", id: 1399, season: 2, episode: 3 });
       expect(movie).toMatch(/^https:\/\/.+550$/);
@@ -32,10 +37,15 @@ describe("VIDEO_SOURCES", () => {
     }
   });
 
-  it("no longer includes the unreachable hosts", () => {
-    const urls = VIDEO_SOURCES.map((s) => s.buildUrl({ type: "movie", id: 1 })).join(" ");
-    expect(urls).not.toContain("vidsrcme.su");
-    expect(urls).not.toContain("vidsrc.pro");
+  it("no longer includes dead hosts", () => {
+    const urls = ALL_SOURCES.map((s) => s.buildUrl({ type: "movie", id: 1 })).join(" ");
+    for (const host of ["vidsrc.cc", "vidsrcme.su", "vidsrc.pro"]) expect(urls).not.toContain(host);
+  });
+
+  it("keeps anime off vixsrc, and anime movies off vidlink", () => {
+    expect(SOURCES_BY_CATEGORY["anime-tv"].map((s) => s.id)).not.toContain("vixsrc");
+    expect(SOURCES_BY_CATEGORY["anime-movie"].map((s) => s.id)).not.toContain("vixsrc");
+    expect(SOURCES_BY_CATEGORY["anime-movie"].map((s) => s.id)).not.toContain("vidlink");
   });
 });
 
@@ -48,14 +58,24 @@ describe("isAnime", () => {
     expect(isAnime({ genres: null })).toBe(false);
   });
 
-  it("treats animated movies as anime", () => {
+  it("treats animation with no origin data as anime", () => {
     expect(isAnime({ genres: [animation] })).toBe(true);
     expect(isAnime({ genres: [{ id: 18, name: "Drama" }] })).toBe(false);
   });
 
-  it("requires a Japanese origin for TV shows", () => {
+  // Shapes as TMDB returns them: movie and TV details both have origin_country
+  it("requires a Japanese origin country for movies and TV shows", () => {
+    const spiritedAway = { genres: [animation], origin_country: ["JP"], original_language: "ja" };
+    const toyStory = { genres: [animation], origin_country: ["US"], original_language: "en" };
+    expect(isAnime(spiritedAway)).toBe(true);
+    expect(isAnime(toyStory)).toBe(false);
     expect(isAnime({ genres: [animation], origin_country: ["JP"] })).toBe(true);
     expect(isAnime({ genres: [animation], origin_country: ["US"] })).toBe(false);
+  });
+
+  it("falls back to the original language when origin_country is missing", () => {
+    expect(isAnime({ genres: [animation], original_language: "ja" })).toBe(true);
+    expect(isAnime({ genres: [animation], original_language: "en" })).toBe(false);
   });
 
   it("matches the genre by name as well as id", () => {
@@ -64,18 +84,17 @@ describe("isAnime", () => {
 });
 
 describe("getAvailableSources", () => {
-  const sources = [makeSource("a"), makeSource("b", false), makeSource("c")];
-
-  it("returns every source for non-anime content", () => {
-    expect(getAvailableSources(false, sources)).toEqual(sources);
+  it("picks the list for the media type and anime flag", () => {
+    expect(getSourceCategory("movie", false)).toBe("movie");
+    expect(getSourceCategory("tv", false)).toBe("tv");
+    expect(getSourceCategory("movie", true)).toBe("anime-movie");
+    expect(getSourceCategory("tv", true)).toBe("anime-tv");
+    expect(getAvailableSources("tv", true)).toBe(SOURCES_BY_CATEGORY["anime-tv"]);
   });
 
-  it("drops sources that can't play anime", () => {
-    expect(getAvailableSources(true, sources).map((s) => s.id)).toEqual(["a", "c"]);
-  });
-
-  it("defaults to VIDEO_SOURCES", () => {
-    expect(getAvailableSources(false)).toBe(VIDEO_SOURCES);
+  it("uses explicit sources as given", () => {
+    const sources = [makeSource("a"), makeSource("b")];
+    expect(getAvailableSources("movie", true, sources)).toBe(sources);
   });
 });
 
