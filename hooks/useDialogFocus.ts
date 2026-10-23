@@ -1,6 +1,11 @@
 import { useEffect, useRef } from "react";
 
-const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), iframe, [tabindex]:not([tabindex="-1"])';
+
+// Open dialogs, innermost last; only the top one handles Tab (the trailer can
+// open on top of the info modal)
+const stack: HTMLElement[] = [];
 
 // Modal focus handling: focus the first control on open, keep Tab inside the
 // dialog, and give focus back to whatever opened it on close.
@@ -12,10 +17,12 @@ export function useDialogFocus<T extends HTMLElement>() {
     if (!node) return;
     const previous = document.activeElement as HTMLElement | null;
     const focusables = () => Array.from(node.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => el.offsetParent !== null);
-    (focusables()[0] ?? node).focus();
+    stack.push(node);
+    // Start on a real control rather than an embedded player
+    (focusables().find((el) => el.tagName !== "IFRAME") ?? node).focus();
 
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Tab") return;
+      if (e.key !== "Tab" || stack[stack.length - 1] !== node) return;
       const list = focusables();
       if (!list.length) {
         e.preventDefault();
@@ -23,17 +30,23 @@ export function useDialogFocus<T extends HTMLElement>() {
       }
       const first = list[0];
       const last = list[list.length - 1];
-      if (e.shiftKey && (document.activeElement === first || !node.contains(document.activeElement))) {
+      const active = document.activeElement;
+      // Focus on the panel itself (after clicking plain content) or outside it
+      // (the focused control unmounted) counts as "before the first control"
+      const outside = active === node || !node.contains(active);
+      if (e.shiftKey && (active === first || outside)) {
         e.preventDefault();
         last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
+      } else if (!e.shiftKey && (active === last || outside)) {
         e.preventDefault();
         first.focus();
       }
     };
-    node.addEventListener("keydown", onKey);
+    // On document, so Tab still reaches us when focus has fallen back to <body>
+    document.addEventListener("keydown", onKey);
     return () => {
-      node.removeEventListener("keydown", onKey);
+      document.removeEventListener("keydown", onKey);
+      stack.splice(stack.indexOf(node), 1);
       previous?.focus?.();
     };
   }, []);

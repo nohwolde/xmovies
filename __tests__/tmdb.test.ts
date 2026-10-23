@@ -34,6 +34,13 @@ describe("trimDetail", () => {
     expect(out.recommendations.results).toEqual([{ id: 680, title: "Pulp Fiction" }]);
   });
 
+  it("keeps the trailer even when TMDB lists it after many clips", () => {
+    const clips = Array.from({ length: 30 }, (_, i) => ({ key: `clip${i}`, site: "YouTube", type: "Clip" }));
+    const out = trimDetail({ id: 2, videos: { results: [...clips, { key: "trailer", site: "YouTube", type: "Trailer" }] } });
+    expect(out.videos.results[0]).toEqual({ key: "trailer", site: "YouTube", type: "Trailer" });
+    expect(out.videos.results).toHaveLength(5);
+  });
+
   it("produces JSON-serializable props when parts are missing", () => {
     const out = trimDetail({ id: 1, title: "Bare" });
     expect(JSON.parse(JSON.stringify(out))).toEqual(out);

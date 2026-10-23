@@ -122,7 +122,10 @@ export function slimItems(items: MediaItem[], withOverview = false): MediaItem[]
 export function trimDetail(data: MediaItem): MediaItem {
   const logos: TmdbLogo[] = data.images?.logos ?? [];
   const logo = logos.find((l) => l.iso_639_1 === "en") ?? logos[0];
-  const videos: any[] = (data.videos?.results ?? []).filter((v: any) => v.site === "YouTube");
+  // TMDB lists clips and featurettes before trailers, sometimes 40+ deep
+  const videos: any[] = (data.videos?.results ?? [])
+    .filter((v: any) => v.site === "YouTube")
+    .sort((a: any, b: any) => Number(b.type === "Trailer") - Number(a.type === "Trailer"));
   return {
     ...data,
     images: { logos: logo ? [{ file_path: logo.file_path, iso_639_1: logo.iso_639_1 ?? null }] : [] },

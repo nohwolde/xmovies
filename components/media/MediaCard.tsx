@@ -90,7 +90,8 @@ function MediaCard({ item, mediaType, badge, onSelect, className = "" }: MediaCa
     onSelect(item, type);
   };
   return (
-    <Link href={mediaHref(item, type)}>
+    // No prefetch: each uncached detail page is an ISR render plus a TMDB call
+    <Link href={mediaHref(item, type)} prefetch={false}>
       <a className={classes} onClick={handleClick}>
         {body}
       </a>
