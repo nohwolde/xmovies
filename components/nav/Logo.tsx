@@ -32,11 +32,11 @@ function Logo({ className = "" }: { className?: string }) {
   const id = useId().replace(/:/g, "");
 
   return (
-    <svg viewBox="-2 -3 272.4 76" className={`w-auto overflow-visible ${className}`} aria-hidden="true">
+    <svg viewBox="-2 -3 277.4 76" className={`w-auto overflow-visible ${className}`} aria-hidden="true">
       <g transform="scale(0.7)">
         <RibbonN id={id} />
       </g>
-      <path transform="translate(42.5 0)" d={MOVIES_PATH} fill="#fff" />
+      <path transform="translate(47.5 0)" d={MOVIES_PATH} fill="#fff" />
     </svg>
   );
 }
