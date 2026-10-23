@@ -77,6 +77,7 @@ function Navbar() {
               return (
                 <Link href={href} key={name}>
                   <a
+                    aria-label={name}
                     aria-current={active ? "page" : undefined}
                     className={`flex items-center gap-2 rounded-lg px-2.5 md:px-3 py-1.5 text-sm font-medium transition-colors ${
                       active ? "bg-white/15 text-white" : "text-white/70 hover:text-white hover:bg-white/5"

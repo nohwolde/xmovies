@@ -17,6 +17,9 @@ function CastMovies() {
   useEffect(() => {
     if (!personId) return;
     let cancelled = false;
+    // Clear the previous person when navigating between cast pages
+    setPerson(null);
+    setCredits([]);
     setLoading(true);
     tmdb(`/person/${personId}`, { append_to_response: "combined_credits" })
       .then((data: any) => {
@@ -44,7 +47,7 @@ function CastMovies() {
   const photo = imageUrl(person?.profile_path, "w342");
 
   return (
-    <Layout title={name}>
+    <Layout title={name} description={person?.biography?.slice(0, 160) || undefined}>
       <div className="flex flex-col gap-6 px-4 md:flex-row md:items-start md:px-12">
         {photo && <img src={photo} alt={name} className="w-32 md:w-44 rounded-xl object-cover ring-1 ring-white/10" />}
         <div className="max-w-3xl space-y-3">
@@ -57,7 +60,7 @@ function CastMovies() {
           {person?.biography && <p className="line-clamp-3 text-sm leading-relaxed text-white/75">{person.biography}</p>}
         </div>
       </div>
-      <Container Data={credits} heading="Known for" loading={loading} />
+      <Container Data={credits} heading="Known for" headingLevel="h2" loading={loading} />
     </Layout>
   );
 }

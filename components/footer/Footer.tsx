@@ -36,7 +36,7 @@ function Footer() {
           ))}
         </nav>
       </div>
-      <p className="mt-10 text-xs text-white/30">© {new Date().getFullYear()} NMOVIES</p>
+      <p className="mt-10 text-xs text-white/30" suppressHydrationWarning>© {new Date().getFullYear()} NMOVIES</p>
     </footer>
   );
 }

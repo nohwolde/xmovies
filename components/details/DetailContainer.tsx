@@ -36,7 +36,8 @@ function DetailRow({ label, children }: { label: string; children: React.ReactNo
 
 function DetailContainer({ onPlay, ...data }: DetailContainerProps) {
   const type = data.media_type;
-  const [logo, setLogo] = useState<string | null>(null);
+  // Detail pages pass images from server props, so the logo is in the SSR HTML
+  const [logo, setLogo] = useState<string | null>(() => (data.images?.logos ? pickLogo(data.images.logos) : null));
   const [trailer, setTrailer] = useState<string | null>(null);
   const [showTrailer, setShowTrailer] = useState(false);
   const { inList, toggle } = useMyList(data, type);
@@ -80,11 +81,13 @@ function DetailContainer({ onPlay, ...data }: DetailContainerProps) {
 
       <div className="relative z-10 flex min-h-[80vh] flex-col justify-end gap-8 px-4 pb-12 pt-28 md:px-12 lg:flex-row lg:items-end lg:justify-between">
         <div className="max-w-2xl space-y-4">
-          {logo ? (
-            <img src={logo} alt={title} className="max-h-28 md:max-h-40 max-w-[80%] object-contain object-left drop-shadow-2xl" />
-          ) : (
-            <h1 className="text-4xl md:text-6xl font-black leading-tight text-shadow">{title}</h1>
-          )}
+          <h1 className="text-4xl md:text-6xl font-black leading-tight text-shadow">
+            {logo ? (
+              <img src={logo} alt={title} className="max-h-28 md:max-h-40 max-w-[80%] object-contain object-left drop-shadow-2xl" />
+            ) : (
+              title
+            )}
+          </h1>
           {data.tagline && <p className="text-lg italic text-white/70 text-shadow">{data.tagline}</p>}
 
           <div className="flex flex-wrap items-center gap-2 text-sm text-white/80 text-shadow">

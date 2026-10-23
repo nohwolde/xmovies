@@ -6,6 +6,7 @@ import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import { MediaItem, MediaType } from "../../lib/tmdb";
 import InfoModal from "./InfoModal";
 import MediaCard from "./MediaCard";
+import { useHydrated } from "../../hooks/useHydrated";
 
 interface RowShellProps {
   title: string;
@@ -127,15 +128,15 @@ export function useInfoModal() {
   const close = useCallback(() => setSelected(null), []);
   // Portal to <body> so the modal escapes ancestor stacking contexts
   // (the home rows' z-10 wrapper would otherwise put it under the navbar)
-  const modal =
-    typeof document === "undefined"
-      ? null
-      : createPortal(
-          <AnimatePresence>
-            {selected && <InfoModal key="info" id={selected.id} mediaType={selected.type} onClose={close} />}
-          </AnimatePresence>,
-          document.body
-        );
+  const hydrated = useHydrated();
+  const modal = hydrated
+    ? createPortal(
+        <AnimatePresence>
+          {selected && <InfoModal key="info" id={selected.id} mediaType={selected.type} onClose={close} />}
+        </AnimatePresence>,
+        document.body
+      )
+    : null;
   return { open, modal };
 }
 

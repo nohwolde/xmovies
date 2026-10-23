@@ -18,6 +18,19 @@ function Pagination({ basePath, page, totalPages = 500 }: PaginationProps) {
   const pill = "flex h-10 min-w-[2.5rem] items-center justify-center gap-1 rounded-lg px-3 text-sm font-medium transition";
   const pages = [page - 1, page, page + 1].filter((p) => p >= 1 && p <= last);
 
+  // Past the end (e.g. after switching Movies/Shows on a high page)
+  if (page > last && last >= 1) {
+    return (
+      <nav className="flex justify-center py-10" aria-label="Pagination">
+        <Link href={pageHref(basePath, last)}>
+          <a className={`${pill} bg-white/5 hover:bg-white/10`}>
+            <FiChevronLeft /> Back to page {last}
+          </a>
+        </Link>
+      </nav>
+    );
+  }
+
   return (
     <nav className="flex items-center justify-center gap-2 py-10" aria-label="Pagination">
       {page > 1 ? (

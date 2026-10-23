@@ -8,7 +8,7 @@ function MyList() {
   const items = [...myList].sort((a, b) => (b.time ?? 0) - (a.time ?? 0));
 
   return (
-    <Layout title="My List">
+    <Layout title="My List" description="The movies and shows you saved on NMOVIES." noindex>
       <Container
         Data={items}
         heading="My List"

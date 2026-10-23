@@ -7,7 +7,7 @@ export default function Privacy() {
   <p>Last updated December 01, 2022</p>
   <div>
     <p>
-      This privacy notice for whatsnext ("Company," "we," "us," or "our"),
+      This privacy notice for NMOVIES ("Company," "we," "us," or "our"),
       describes how and why we might collect, store, use, and/or share
       ("process") your information when you use our services ("Services"), such
       as when you:
@@ -15,8 +15,8 @@ export default function Privacy() {
     <ul className=" list-disc">
       <li>
         Visit our website at{" "}
-        <a href="https://whatsnext-v2.vercel.app" className="dark:text-white">
-          https://whatsnext-v2.vercel.app
+        <a href="https://nmovies.app" className="dark:text-white">
+          https://nmovies.app
         </a>
         , or any website of ours that links to this privacy notice
       </li>
@@ -47,7 +47,7 @@ export default function Privacy() {
     <p>
       <b>What personal information do we process?</b> When you visit, use, or
       navigate our Services, we may process personal information depending on
-      how you interact with whatsnext and the Services, the choices you make,
+      how you interact with NMOVIES and the Services, the choices you make,
       and the products and features you use. Click here to learn more
     </p>
     <p>

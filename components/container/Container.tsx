@@ -14,10 +14,27 @@ interface ContainerProps {
   pagination?: { basePath: string; page: number; totalPages?: number };
   loading?: boolean;
   emptyMessage?: string;
+  // The fetch failed; shows an alert with a retry button instead of "empty"
+  error?: boolean;
+  onRetry?: () => void;
+  // The page's own title, unless the page already has an h1
+  headingLevel?: "h1" | "h2";
 }
 
 // Catalog grid used by the list, genre, search, cast and recommendation sections
-function Container({ Data, heading, subheading, mediaType, toggle, pagination, loading, emptyMessage }: ContainerProps) {
+function Container({
+  Data,
+  heading,
+  subheading,
+  mediaType,
+  toggle,
+  pagination,
+  loading,
+  emptyMessage,
+  headingLevel: Heading = "h1",
+  error,
+  onRetry,
+}: ContainerProps) {
   const { open, modal } = useInfoModal();
   const items = (Data ?? []).filter((item) => item && item.media_type !== "person");
 
@@ -26,13 +43,26 @@ function Container({ Data, heading, subheading, mediaType, toggle, pagination, l
       {modal}
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-4xl font-black tracking-tight">{heading}</h1>
+          <Heading className="text-2xl md:text-4xl font-black tracking-tight">{heading}</Heading>
           {subheading && <p className="mt-1 text-sm text-white/50">{subheading}</p>}
         </div>
         {toggle && <TypeToggle value={toggle.value} onChange={toggle.onChange} />}
       </div>
 
-      {loading && !items.length ? (
+      {error && !loading ? (
+        <div role="alert" className="flex flex-col items-center gap-4 py-20 text-center text-white/60">
+          <p>Couldn&apos;t load this list. Check your connection and try again.</p>
+          {onRetry && (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="rounded-md bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/20"
+            >
+              Retry
+            </button>
+          )}
+        </div>
+      ) : loading && !items.length ? (
         <div className="grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6" aria-hidden>
           {Array.from({ length: 12 }).map((_, i) => (
             <div key={i} className="aspect-video animate-pulse rounded-lg bg-white/5" />
@@ -53,7 +83,10 @@ function Container({ Data, heading, subheading, mediaType, toggle, pagination, l
         <p className="py-20 text-center text-white/50">{emptyMessage ?? "Nothing to show here yet."}</p>
       )}
 
-      {pagination && items.length > 0 && <Pagination {...pagination} />}
+      {/* Also shown when this page is empty but others exist (e.g. past the last page, or only people matched) */}
+      {pagination && !loading && !error && (items.length > 0 || (pagination.totalPages ?? 0) > 0) && (
+        <Pagination {...pagination} />
+      )}
     </section>
   );
 }

@@ -36,10 +36,10 @@ function Top10Row({ title, items }: { title: string; items: MediaItem[] }) {
                 expanded ? "w-[78vw] sm:w-[520px] lg:w-[620px]" : "w-[36vw] sm:w-[180px] lg:w-[210px]"
               }`}
             >
-              <div className="relative h-[54vw] sm:h-[270px] lg:h-[315px] overflow-hidden rounded-lg bg-surface-2 ring-1 ring-white/5">
+              <div className="relative h-[54vw] sm:h-[270px] lg:h-[315px] overflow-hidden rounded-lg bg-surface-2 ring-1 ring-white/5 focus-within:ring-2 focus-within:ring-accent">
                 <RankBadge rank={i + 1} />
                 <Link href={mediaHref(item)}>
-                  <a className="absolute inset-0" aria-label={`${i + 1}. ${getTitle(item)}`}>
+                  <a className="absolute inset-0 focus:outline-none" aria-label={`${i + 1}. ${getTitle(item)}`}>
                     <img
                       src={imageUrl(expanded && item.backdrop_path ? item.backdrop_path : item.poster_path, expanded ? "w780" : "w342")!}
                       alt=""

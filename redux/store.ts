@@ -11,8 +11,10 @@ const persistConfig = {
 };
 
 const persistedReducer = persistReducer(persistConfig, oneReducer);
+// Redux DevTools only in development
+const enhancer = applyMiddleware(thunk);
 export let Store = createStore(
   persistedReducer,
-  composeWithDevTools(applyMiddleware(thunk))
+  process.env.NODE_ENV === "production" ? enhancer : composeWithDevTools(enhancer)
 );
 export let Persistor = persistStore(Store);

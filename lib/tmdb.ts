@@ -104,6 +104,42 @@ export function isRecent(item: Partial<MediaItem>, now = Date.now()): boolean {
   return age >= 0 && age < 30 * 24 * 60 * 60 * 1000;
 }
 
+// Keep server props small: cards only need these fields
+const CARD_FIELDS = ["id", "title", "name", "poster_path", "backdrop_path", "vote_average", "release_date", "first_air_date", "genre_ids", "media_type"];
+export function slimItems(items: MediaItem[], withOverview = false): MediaItem[] {
+  return items.map((item) => {
+    const out: any = {};
+    for (const key of withOverview ? [...CARD_FIELDS, "overview"] : CARD_FIELDS) {
+      if (item[key] !== undefined) out[key] = item[key];
+    }
+    return out;
+  });
+}
+
+// Detail pages append images, videos, credits and recommendations, but only
+// render a logo, a trailer, 20 cast members, the directors and card fields.
+// The full responses can be 100KB+ of ISR payload (e.g. hundreds of backdrops).
+export function trimDetail(data: MediaItem): MediaItem {
+  const logos: TmdbLogo[] = data.images?.logos ?? [];
+  const logo = logos.find((l) => l.iso_639_1 === "en") ?? logos[0];
+  const videos: any[] = (data.videos?.results ?? []).filter((v: any) => v.site === "YouTube");
+  return {
+    ...data,
+    images: { logos: logo ? [{ file_path: logo.file_path, iso_639_1: logo.iso_639_1 ?? null }] : [] },
+    videos: { results: videos.slice(0, 5).map(({ key, site, type }) => ({ key, site, type })) },
+    credits: {
+      cast: (data.credits?.cast ?? []).slice(0, 20).map((c: any) => ({
+        id: c.id,
+        name: c.name,
+        character: c.character ?? null,
+        profile_path: c.profile_path ?? null,
+      })),
+      crew: (data.credits?.crew ?? []).filter((c: any) => c.job === "Director").map((c: any) => ({ id: c.id, name: c.name, job: c.job })),
+    },
+    recommendations: { results: slimItems(data.recommendations?.results ?? []) },
+  };
+}
+
 const GENRES: Record<number, string> = {
   28: "Action", 12: "Adventure", 16: "Animation", 35: "Comedy", 80: "Crime",
   99: "Documentary", 18: "Drama", 10751: "Family", 14: "Fantasy", 36: "History",

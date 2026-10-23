@@ -10,6 +10,9 @@ import { Store, Persistor } from "../redux/store";
 import Navbar from "../components/nav/Navbar";
 import Footer from "../components/footer/Footer";
 
+const SITE_DESCRIPTION =
+  "Browse trending movies, TV shows and anime, save titles to My List and pick up where you left off.";
+
 function MyApp({ Component, pageProps }: AppProps) {
   return (
     <Provider store={Store}>
@@ -18,6 +21,11 @@ function MyApp({ Component, pageProps }: AppProps) {
           <title>NMOVIES - Watch Movies & TV Shows Online</title>
           <meta name="viewport" content="width=device-width, initial-scale=1" />
           <meta name="theme-color" content="#0b0b0d" />
+          <meta key="description" name="description" content={SITE_DESCRIPTION} />
+          <meta key="og:title" property="og:title" content="NMOVIES" />
+          <meta key="og:description" property="og:description" content={SITE_DESCRIPTION} />
+          <meta property="og:site_name" content="NMOVIES" />
+          <meta key="og:type" property="og:type" content="website" />
           <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
           <link rel="icon" href="/favicon.ico" sizes="any" />
         </Head>

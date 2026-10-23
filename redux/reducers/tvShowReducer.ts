@@ -29,7 +29,8 @@ export const currentEpisode = (state = 1,action:any) => {
 export const continueWatchingReducer = (state = [],action:any) => {
     switch(action.type) {
         case MyActions.SETCONTINUEWATCHING:
-            return [...state.filter((item:any) => item.id !== action.payload.id), action.payload].reverse();
+            // Newest first, capped so localStorage doesn't grow forever
+            return [action.payload, ...state.filter((item:any) => item.id !== action.payload.id)].slice(0, 30);
         case MyActions.GETCONTINUEWATCHING:
             return action.payload
       
@@ -43,7 +44,7 @@ export const continueWatchingReducer = (state = [],action:any) => {
 export const tvShowReducer = (state = [],action:any) => {
     switch(action.type) {
         case MyActions.GETCURRENTSTATES:
-            return [...state.filter((item:any) => item.id !== action.payload.id),action.payload]
+            return [action.payload, ...state.filter((item:any) => item.id !== action.payload.id)].slice(0, 100)
        
 
         default:
