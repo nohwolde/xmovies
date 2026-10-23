@@ -1,7 +1,8 @@
 import React, { useId } from "react";
 
 // The N is a folded ribbon (bright diagonal over darker stems, curved bottom)
-// drawn in a 55x100 box and scaled to the wordmark's cap height of 70. MOVIES
+// drawn in a 55x100 box and scaled to 88, so it stands 9 above and below
+// MOVIES' cap height of 70 and leads the wordmark. MOVIES
 // is Bebas Neue outlined with opentype.js (@fontsource/bebas-neue latin-400,
 // 100 units, +1.5 tracking), so the logo doesn't depend on a web font.
 const MOVIES_PATH =
@@ -32,11 +33,11 @@ function Logo({ className = "" }: { className?: string }) {
   const id = useId().replace(/:/g, "");
 
   return (
-    <svg viewBox="-2 -3 277.4 76" className={`w-auto overflow-visible ${className}`} aria-hidden="true">
-      <g transform="scale(0.7)">
+    <svg viewBox="-2 -11 287.4 92" className={`w-auto overflow-visible ${className}`} aria-hidden="true">
+      <g transform="translate(0 -9) scale(0.88)">
         <RibbonN id={id} />
       </g>
-      <path transform="translate(47.5 0)" d={MOVIES_PATH} fill="#fff" />
+      <path transform="translate(57.5 0)" d={MOVIES_PATH} fill="#fff" />
     </svg>
   );
 }
