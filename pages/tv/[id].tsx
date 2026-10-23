@@ -8,12 +8,9 @@ import DetailContainer from "../../components/details/DetailContainer";
 import MediaRow, { RowShell } from "../../components/media/MediaRow";
 import PersonCard from "../../components/media/PersonCard";
 import { SetContinueWatching, SetCurrentState } from "../../redux/actions/tvShowAction";
+import EmbedPlayer from "../../components/player/EmbedPlayer";
 import { MediaItem, formatRuntime, getTitle, imageUrl, tmdb } from "../../lib/tmdb";
-
-const SOURCES = [
-  { name: "Vidsrc", baseUrl: "https://vidsrcme.su/embed/tv/" },
-  { name: "VidsrcPro", baseUrl: "https://vidsrc.pro/embed/tv/" },
-];
+import { isAnime } from "../../utils/video-sources";
 
 interface Episode {
   episode_number: number;
@@ -55,7 +52,6 @@ function TvEpisode({ res: data }: { res: MediaItem }) {
   const playing = { season: saved?.season_number ?? 1, episode: saved?.episode_number ?? 1 };
 
   const [viewSeason, setViewSeason] = useState(playing.season);
-  const [baseUrl, setBaseUrl] = useState<string>(SOURCES[0].baseUrl);
   useEffect(() => setViewSeason(playing.season), [id, playing.season]);
 
   const seasons: any[] = (data?.seasons ?? []).filter((s: any) => s.season_number > 0 && s.air_date);
@@ -128,7 +124,7 @@ function TvEpisode({ res: data }: { res: MediaItem }) {
       <DetailContainer {...data} media_type="tv" />
 
       <section id="watch" className="scroll-mt-24 px-4 md:px-12" aria-label="Watch">
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-white/40">Now playing</p>
             <h2 className="text-lg md:text-xl font-bold">
@@ -136,32 +132,14 @@ function TvEpisode({ res: data }: { res: MediaItem }) {
               {playingEpisode?.name ? <span className="font-normal text-white/70"> — {playingEpisode.name}</span> : null}
             </h2>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-medium text-white/60">Source:</span>
-            {SOURCES.map((source) => (
-              <button
-                key={source.baseUrl}
-                type="button"
-                aria-pressed={baseUrl === source.baseUrl}
-                onClick={() => setBaseUrl(source.baseUrl)}
-                className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
-                  baseUrl === source.baseUrl ? "bg-white text-black" : "bg-white/5 text-white/80 hover:bg-white/10"
-                }`}
-              >
-                {source.name}
-              </button>
-            ))}
-          </div>
         </div>
-        <div className="overflow-hidden rounded-xl bg-black ring-1 ring-white/10">
-          <iframe
-            onLoadCapture={handleIframe}
-            className="aspect-video w-full"
-            src={`${baseUrl}${id}/${playing.season}/${playing.episode}`}
-            title={`Watch ${getTitle(data)} S${playing.season}E${playing.episode}`}
-            allowFullScreen
-          ></iframe>
-        </div>
+        <EmbedPlayer
+          media={{ type: "tv", id: id as string, season: playing.season, episode: playing.episode }}
+          title={getTitle(data)}
+          anime={isAnime(data)}
+          className="aspect-video overflow-hidden rounded-xl ring-1 ring-white/10"
+          onLoad={handleIframe}
+        />
         <div className="mt-3 flex justify-end gap-2">
           <button
             type="button"
