@@ -183,6 +183,14 @@ describe("readPlaybackSignal", () => {
     expect(readPlaybackSignal(vixsrc, { origin: "https://vixsrc.to", data: VIXSRC_TIMEUPDATE })).toBe("ready");
   });
 
+  it("reads vixsrc player errors as errors", () => {
+    for (const event of ["error", "setupError"]) {
+      expect(
+        readPlaybackSignal(vixsrc, { origin: "https://vixsrc.to", data: { type: "PLAYER_EVENT", event: { event } } })
+      ).toBe("error");
+    }
+  });
+
   it("reads vidlink media data and player events as ready, and ignores its analytics", () => {
     expect(readPlaybackSignal(vidlink, { origin: "https://vidlink.pro", data: VIDLINK_MEDIA_DATA })).toBe("ready");
     expect(readPlaybackSignal(vidlink, { origin: "https://vidlink.pro", data: VIDLINK_PLAYER_EVENT })).toBe(

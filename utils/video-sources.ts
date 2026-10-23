@@ -51,10 +51,13 @@ const messageType = (data: unknown): unknown =>
 
 // No popups; no anime catalog (404s on anime). A playable title autoplays and
 // posts {type:"PLAYER_EVENT", event:{event:"play"|"timeupdate"|…}} within ~2s
-// of onLoad; the 404 page posts nothing.
-const VIXSRC = tmdbSource("vixsrc", "https://vixsrc.to", (data) =>
-  messageType(data) === "PLAYER_EVENT" ? "ready" : null
-);
+// of onLoad; the 404 page posts nothing. The events are JW Player's, so its
+// error events (not seen in testing) count as a failure rather than ready.
+const VIXSRC = tmdbSource("vixsrc", "https://vixsrc.to", (data) => {
+  if (messageType(data) !== "PLAYER_EVENT") return null;
+  const name = (data as { event?: { event?: unknown } }).event?.event;
+  return name === "error" || name === "setupError" ? "error" : "ready";
+});
 // Plays anime series but not anime movies. A playable title posts
 // {type:"MEDIA_DATA"} (its watch history) every 2s without waiting for play,
 // then {type:"PLAYER_EVENT", data:{event}} once playing. "We Couldn't Find This

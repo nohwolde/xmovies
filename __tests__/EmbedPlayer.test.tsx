@@ -330,6 +330,46 @@ describe("EmbedPlayer", () => {
       expect(window.localStorage.getItem("xmovies:preferred-source")).toBe("a");
     });
 
+    it("also leaves it alone when the viewer clicked in before it finished loading", () => {
+      render(<EmbedPlayer media={movie} sources={SIGNAL_SOURCES} />);
+
+      act(() => {
+        getIframe().focus();
+        window.dispatchEvent(new Event("blur"));
+        vi.advanceTimersByTime(0);
+      });
+      loadIframe();
+      act(() => {
+        vi.advanceTimersByTime(READY_TIMEOUT_MS * 2);
+      });
+
+      expect(iframeSrc()).toBe("https://a.test/m/550");
+    });
+
+    it("doesn't let a late ready message confirm the source it failed over to", () => {
+      render(<EmbedPlayer media={movie} sources={SIGNAL_SOURCES} />);
+      loadIframe();
+      const staleFrame = getIframe().contentWindow;
+
+      // the grace timer and the provider's first message land in the same tick
+      act(() => {
+        vi.advanceTimersByTime(READY_TIMEOUT_MS);
+        window.dispatchEvent(
+          new MessageEvent("message", { data: { type: "ready" }, origin: "https://a.test", source: staleFrame })
+        );
+      });
+
+      expect(iframeSrc()).toBe("https://b.test/m/550");
+      expect(screen.getByRole("status")).toBeInTheDocument();
+      expect(window.localStorage.getItem("xmovies:preferred-source")).toBeNull();
+      // b is still checked like any other source
+      loadIframe();
+      act(() => {
+        vi.advanceTimersByTime(READY_TIMEOUT_MS);
+      });
+      expect(iframeSrc()).toBe("https://c.test/m/550");
+    });
+
     it("keeps today's onLoad behaviour for silent providers", () => {
       render(<EmbedPlayer media={movie} sources={SIGNAL_SOURCES} />);
       loadIframe();

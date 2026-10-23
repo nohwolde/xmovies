@@ -61,11 +61,20 @@ type PlayerAction =
   | { type: "restore"; index: number }
   | { type: "reset" }
   | { type: "frameLoaded" }
-  | { type: "loaded" }
+  // `index` is the source that loaded; stale events for another one are dropped
+  | { type: "loaded"; index: number }
   | { type: "engaged" }
   | { type: "timeout"; total: number }
   | { type: "error"; total: number }
   | { type: "retry" };
+
+function failOver(state: PlayerState, total: number): PlayerState {
+  const tried = new Set(state.tried).add(state.index);
+  const next = getNextSourceIndex(state.index, total, tried);
+  return next === null
+    ? { ...state, tried, status: "failed" }
+    : { ...state, index: next, tried, status: "loading" };
+}
 
 const initialState: PlayerState = { index: 0, tried: new Set(), status: "loading", attempt: 0 };
 
@@ -87,23 +96,17 @@ export function playerReducer(state: PlayerState, action: PlayerAction): PlayerS
     case "frameLoaded":
       return state.status === "loading" ? { ...state, status: "awaiting" } : state;
     case "loaded":
-      return { ...state, status: "loaded" };
+      return action.index === state.index ? { ...state, status: "loaded" } : state;
     case "engaged":
       return state.status === "awaiting" ? { ...state, status: "engaged" } : state;
-    // A viewer using the player stops the timeouts, not a provider's own error
+    // A viewer using the player ("engaged") stops the timeouts, not a
+    // provider's own error
     case "timeout":
-    case "error": {
-      const failing =
-        action.type === "error"
-          ? isUnconfirmed(state.status)
-          : state.status === "loading" || state.status === "awaiting";
-      if (!failing) return state;
-      const tried = new Set(state.tried).add(state.index);
-      const next = getNextSourceIndex(state.index, action.total, tried);
-      return next === null
-        ? { ...state, tried, status: "failed" }
-        : { ...state, index: next, tried, status: "loading" };
-    }
+      return state.status === "loading" || state.status === "awaiting"
+        ? failOver(state, action.total)
+        : state;
+    case "error":
+      return isUnconfirmed(state.status) ? failOver(state, action.total) : state;
     case "retry":
       return { index: 0, tried: new Set(), status: "loading", attempt: state.attempt + 1 };
   }
@@ -159,34 +162,45 @@ const EmbedPlayer = ({
     return () => window.clearTimeout(timer);
   }, [url, attempt, status, availableSources.length]);
 
-  // Remember the source that actually played (not just the one clicked), so a
-  // dead source doesn't cost every later visit a full timeout.
-  const confirmPlaying = () => {
-    dispatch({ type: "loaded" });
-    if (source) writePreferredSource(source.id);
-    onLoad?.();
-  };
+  const onLoadRef = useRef(onLoad);
+  useEffect(() => {
+    onLoadRef.current = onLoad;
+  });
+
+  // Remember the source that was confirmed (onLoad for silent providers, a
+  // ready message otherwise), not just the one clicked, so a dead source
+  // doesn't cost every later visit a full timeout.
+  const confirmedId = status === "loaded" ? source?.id : undefined;
+  useEffect(() => {
+    if (!confirmedId) return;
+    writePreferredSource(confirmedId);
+    onLoadRef.current?.();
+  }, [confirmedId]);
 
   const hasSignals = Boolean(source?.signals);
 
-  // Re-subscribes every render so the handler sees the current source and onLoad
   useEffect(() => {
-    if (!url || !hasSignals || !isUnconfirmed(status)) return;
+    if (!url || !source?.signals || !isUnconfirmed(status)) return;
     const handleMessage = (event: MessageEvent) => {
       // Only the current iframe, from the provider's own origin
       if (!iframeRef.current || event.source !== iframeRef.current.contentWindow) return;
       const signal = readPlaybackSignal(source, event);
-      if (signal === "ready") confirmPlaying();
+      if (signal === "ready") dispatch({ type: "loaded", index: state.index });
       else if (signal === "error") dispatch({ type: "error", total: availableSources.length });
     };
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  });
+  }, [url, attempt, status, source, state.index, availableSources.length]);
 
   // Clicking into a cross-origin iframe blurs our window and focuses the
   // iframe; a viewer who is already using the player shouldn't lose it.
   useEffect(() => {
     if (status !== "awaiting") return;
+    // they may have clicked in before the frame finished loading
+    if (iframeRef.current && document.activeElement === iframeRef.current) {
+      dispatch({ type: "engaged" });
+      return;
+    }
     let check: number | undefined;
     const handleBlur = () => {
       check = window.setTimeout(() => {
@@ -211,8 +225,7 @@ const EmbedPlayer = ({
   const selectSource = (index: number) => dispatch({ type: "select", index });
 
   const handleLoad = () => {
-    if (hasSignals) dispatch({ type: "frameLoaded" });
-    else confirmPlaying();
+    dispatch(hasSignals ? { type: "frameLoaded" } : { type: "loaded", index: state.index });
   };
 
   const retry = () => dispatch({ type: "retry" });
