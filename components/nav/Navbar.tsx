@@ -63,7 +63,7 @@ function Navbar() {
       <div className="mx-auto flex h-16 md:h-20 items-center justify-between gap-3 px-4 md:px-12">
         <Link href="/">
           <a className="shrink-0 drop-shadow-[0_2px_10px_rgba(0,0,0,0.55)]" aria-label="NMOVIES home">
-            <Logo className="h-[18px] md:h-[22px]" />
+            <Logo className="h-[26px] md:h-[30px]" />
           </a>
         </Link>
 

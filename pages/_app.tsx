@@ -18,7 +18,8 @@ function MyApp({ Component, pageProps }: AppProps) {
           <title>NMOVIES - Watch Movies & TV Shows Online</title>
           <meta name="viewport" content="width=device-width, initial-scale=1" />
           <meta name="theme-color" content="#0b0b0d" />
-          <link rel="icon" href="/favicon.ico" />
+          <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+          <link rel="icon" href="/favicon.ico" sizes="any" />
         </Head>
         <Script
           src="https://cloud.umami.is/script.js"

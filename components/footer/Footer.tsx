@@ -20,7 +20,7 @@ function Footer() {
         <div className="max-w-sm space-y-3">
           <Link href="/">
             <a className="inline-block" aria-label="NMOVIES home">
-              <Logo className="h-[18px]" />
+              <Logo className="h-[26px]" />
             </a>
           </Link>
           <p>
