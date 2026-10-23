@@ -1,12 +1,12 @@
 import type { GetServerSideProps, NextPage } from "next";
 import Head from "next/head";
 import { useEffect, useState } from "react";
-import { useSelector } from "react-redux";
 import GenreGrid from "../components/home/GenreGrid";
 import HeroCarousel from "../components/home/HeroCarousel";
 import Top10Row from "../components/home/Top10Row";
 import ContinueCard from "../components/media/ContinueCard";
 import MediaRow, { RowShell } from "../components/media/MediaRow";
+import { usePersistedState } from "../hooks/usePersistedState";
 import { MediaItem, MediaType, getMediaType, tmdbList } from "../lib/tmdb";
 
 const ANIME_PARAMS = { with_genres: 16, with_original_language: "ja", sort_by: "popularity.desc" };
@@ -108,7 +108,7 @@ function rankLabelFor(top10: MediaItem[]) {
 }
 
 const Home: NextPage<HomeProps> = ({ featured, top10, onAir, upcoming, drama, animeShows, animeMovies, rows }) => {
-  const continueWatching: any[] = useSelector((state: any) => state.ContinueWatching) ?? [];
+  const { value: continueWatching } = usePersistedState<any[]>("ContinueWatching", []);
   const recent = [...continueWatching].sort((a, b) => b.time - a.time);
 
   const trending = useToggleRow("trending", rows.trending);

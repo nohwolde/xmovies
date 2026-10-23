@@ -1,7 +1,7 @@
 import Link from "next/link";
 import React from "react";
 import { FaPlay } from "react-icons/fa";
-import { useSelector } from "react-redux";
+import { usePersistedState } from "../../hooks/usePersistedState";
 import { imageUrl } from "../../lib/tmdb";
 
 interface ContinueItem {
@@ -16,7 +16,7 @@ interface ContinueItem {
 }
 
 function ContinueCard({ item }: { item: ContinueItem }) {
-  const currentState: any[] = useSelector((state: any) => state.CurrentState) ?? [];
+  const { value: currentState } = usePersistedState<any[]>("CurrentState", []);
   const current = currentState.find((entry) => entry.id == item.id);
   const season = current?.season_number ?? item.season ?? 1;
   const episode = current?.episode_number ?? item.episode ?? 1;
