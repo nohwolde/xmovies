@@ -7,6 +7,7 @@ import {
   getInitialSourceIndex,
   getNextSourceIndex,
 } from "../../utils/video-sources";
+import { useHydrated } from "../../hooks/usePersistedState";
 
 const PREFERRED_SOURCE_KEY = "xmovies:preferred-source";
 export const LOAD_TIMEOUT_MS = 15000;
@@ -110,7 +111,10 @@ const EmbedPlayer = ({
 
   const safeIndex = state.index < availableSources.length ? state.index : 0;
   const source = availableSources[safeIndex];
-  const url = buildEmbedUrl(source, media);
+  // No iframe in the server HTML: the preferred source is only known after
+  // hydration, and loading source 0 first would waste a request
+  const hydrated = useHydrated();
+  const url = hydrated ? buildEmbedUrl(source, media) : null;
   const mediaKey = `${media.type}:${media.id}:${media.season}:${media.episode}`;
 
   // A new title or episode gets a fresh round of failover attempts

@@ -1,16 +1,18 @@
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 import { toast } from "react-toastify";
 import Msg from "../components/Msg";
 import { addToMyList, removeFromList } from "../redux/actions/myListAction";
 import { MediaItem, MediaType, getMediaType, getTitle } from "../lib/tmdb";
+import { usePersistedState } from "./usePersistedState";
 
 export function useMyList(item: MediaItem | null | undefined, mediaType?: MediaType) {
   const dispatch = useDispatch();
-  const myList: any[] = useSelector((state: any) => state.MyList) ?? [];
+  const { value: myList, ready } = usePersistedState<any[]>("MyList", []);
   const inList = !!item && myList.some((entry) => entry.id == item.id);
 
   const toggle = () => {
-    if (!item) return;
+    // Until rehydrated, inList is unknown and adding could duplicate an entry
+    if (!item || !ready) return;
     const title = getTitle(item);
     if (inList) {
       dispatch(removeFromList(item.id));
