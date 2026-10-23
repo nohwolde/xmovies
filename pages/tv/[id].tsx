@@ -17,6 +17,8 @@ import {
 import { AnimatePresence, motion } from "framer-motion";
 import { currentEpisode } from "../../redux/reducers/tvShowReducer";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import EmbedPlayer from "../../components/player/EmbedPlayer";
+import { isAnime } from "../../utils/video-sources";
 const DetailContainer = dynamic(
   () => import("../../components/details/DetailContainer")
 );
@@ -40,8 +42,6 @@ function TvEpisode(res: any) {
   const [notification, setNotification] = useState(false);
   const [casts, setCasts] = useState<any>([]);
   const [firstEpName, setFirstEpName] = useState("");
-
-  const [baseUrl, setBaseUrl] = useState<string>("https://vidsrcme.su/embed/tv/");
 
   const { MyList, CurrentState, ContinueWatching } = useSelector(
     (state: any) => state
@@ -77,17 +77,17 @@ function TvEpisode(res: any) {
   const handleIframe = () => {
     if (dataState.length < 1) {
       dataState["ep_name"] = firstEpName;
-      dataState["episode_image"] = sEpisodes[0]?.still_path;
+      dataState["episode_image"] = sEpisodes?.[0]?.still_path;
     }
     dispatch(
       SetContinueWatching({
         id: id,
         poster_path: data?.poster_path,
-        backdrop_path: dataState?.episode_image || sEpisodes[0].still_path,
+        backdrop_path: dataState?.episode_image || sEpisodes?.[0]?.still_path,
         title: data?.name,
         season: dataState?.season || 1,
         episode: dataState?.ep_num || 1,
-        episode_name: dataState?.ep_name || sEpisodes[0].name,
+        episode_name: dataState?.ep_name || sEpisodes?.[0]?.name,
         media_type: "tv",
         time: Date.now(),
       })
@@ -126,29 +126,18 @@ function TvEpisode(res: any) {
             <div className="flex flex-col">
               <div className="flex">
                 <div className="w-full">
-                  <div className="flex items-center justify-between">
-                    {/* make 2 buttons that will switch the prefix of the source */}
-                    <div className="flex items-center">
-                      <div className="flex items-center gap-2 p-2 bg-[#0e0c8d] rounded-md text-white m-2">
-                        Sources
-                      </div>
-                      <div className="flex items-center gap-2 p-2 bg-[#0e0c8d] rounded-md text-white m-2">
-                        <button onClick={() => {if(baseUrl !== 'https://vidsrcme.su/embed/movie/')setBaseUrl('https://vidsrcme.su/embed/tv/')}}className={`flex items-center gap-2 p-2 ${baseUrl == 'https://vidsrcme.su/embed/tv/'?  'bg-[#0e54bc]' : ' bg-[#2f2f2f]'}  rounded-md text-white m-2`}>
-                          <span>Vidsrc</span>
-                        </button>
-                        <button onClick={() => {if(baseUrl !== 'https://vidsrc.pro/embed/movie/')setBaseUrl('https://vidsrc.pro/embed/tv/')}} className={`flex items-center gap-2 p-2 ${baseUrl == 'https://vidsrc.pro/embed/tv/'?  'bg-[#0e54bc]' : ' bg-[#2f2f2f]'} rounded-md text-white`}>
-                          <span>VidsrcPro</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                  <iframe
-                    onLoadCapture={handleIframe}
-                    className=" w-full h-[300px] lg:h-[750px] mx-auto "
-                    src={`${baseUrl}${id}/${dataState?.season}/${dataState?.ep_num}`}
-                    allowFullScreen
-                    
-                  ></iframe>
+                  <EmbedPlayer
+                    media={{
+                      type: "tv",
+                      id: id as string,
+                      season: dataState?.season,
+                      episode: dataState?.ep_num,
+                    }}
+                    title={data?.name}
+                    anime={isAnime(data)}
+                    className="h-[300px] lg:h-[750px]"
+                    onLoad={handleIframe}
+                  />
                   <div className="flex gap-1 p-1.5 justify-end">
                     {dataState.ep_num > 1 && (
 
