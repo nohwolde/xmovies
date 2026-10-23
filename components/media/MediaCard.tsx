@@ -12,6 +12,7 @@ import {
   isRecent,
   mediaHref,
 } from "../../lib/tmdb";
+import { useHydrated } from "../../hooks/useHydrated";
 
 interface MediaCardProps {
   item: MediaItem;
@@ -47,7 +48,10 @@ function MediaCard({ item, mediaType, badge, onSelect, className = "" }: MediaCa
   const type = getMediaType(item, mediaType);
   const title = getTitle(item);
   const image = imageUrl(item.backdrop_path, "w780") ?? imageUrl(item.poster_path, "w500");
-  const label = badge === undefined ? (isRecent(item) ? "Recently added" : null) : badge;
+  // "Recently added" depends on today's date, which can differ between a cached
+  // server render and the visit, so it's only decided after hydration
+  const hydrated = useHydrated();
+  const label = badge === undefined ? (hydrated && isRecent(item) ? "Recently added" : null) : badge;
 
   const body = (
     <>
@@ -78,16 +82,17 @@ function MediaCard({ item, mediaType, badge, onSelect, className = "" }: MediaCa
 
   const classes = `group block w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-lg ${className}`;
 
-  if (onSelect) {
-    return (
-      <button type="button" className={classes} onClick={() => onSelect(item, type)} aria-label={title}>
-        {body}
-      </button>
-    );
-  }
+  // Always a real link (crawlable, opens in a new tab); a plain click opens
+  // the info modal instead when onSelect is given
+  const handleClick = (e: React.MouseEvent) => {
+    if (!onSelect || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    onSelect(item, type);
+  };
   return (
-    <Link href={mediaHref(item, type)}>
-      <a className={classes} aria-label={title}>
+    // No prefetch: each uncached detail page is an ISR render plus a TMDB call
+    <Link href={mediaHref(item, type)} prefetch={false}>
+      <a className={classes} onClick={handleClick}>
         {body}
       </a>
     </Link>

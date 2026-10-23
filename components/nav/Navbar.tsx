@@ -2,6 +2,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { useEffect, useRef, useState } from "react";
 import { FiFilm, FiHome, FiSearch, FiStar, FiTv, FiUser, FiX } from "react-icons/fi";
+import Logo from "./Logo";
 
 const NAV_ITEMS = [
   { name: "Home", href: "/", icon: FiHome, match: (p: string) => p === "/" },
@@ -61,8 +62,8 @@ function Navbar() {
     >
       <div className="mx-auto flex h-16 md:h-20 items-center justify-between gap-3 px-4 md:px-12">
         <Link href="/">
-          <a className="shrink-0 text-2xl md:text-3xl font-black tracking-tight text-white" aria-label="NMOVIES home">
-            N<span className="text-accent">MOVIES</span>
+          <a className="shrink-0 drop-shadow-[0_2px_10px_rgba(0,0,0,0.55)]" aria-label="NMOVIES home">
+            <Logo className="h-[28px] sm:h-[32px] md:h-[36px]" />
           </a>
         </Link>
 
@@ -76,6 +77,7 @@ function Navbar() {
               return (
                 <Link href={href} key={name}>
                   <a
+                    aria-label={name}
                     aria-current={active ? "page" : undefined}
                     className={`flex items-center gap-2 rounded-lg px-2.5 md:px-3 py-1.5 text-sm font-medium transition-colors ${
                       active ? "bg-white/15 text-white" : "text-white/70 hover:text-white hover:bg-white/5"

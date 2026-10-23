@@ -5,17 +5,19 @@ import { usePageParam, useTmdbPage } from "../../hooks/useTmdbPage";
 
 function TvShows() {
   const page = usePageParam();
-  const { items, totalPages, loading } = useTmdbPage("/discover/tv", { sort_by: "popularity.desc", page });
+  const { items, totalPages, loading, error, retry } = useTmdbPage(page ? "/discover/tv" : null, { sort_by: "popularity.desc", page: page ?? 1 });
 
   return (
-    <Layout title="TV Shows">
+    <Layout title="TV Shows" description="Browse the most popular TV series right now on NMOVIES.">
       <Container
         Data={items}
         heading="TV Shows"
         subheading="The most popular series right now"
         mediaType="tv"
         loading={loading}
-        pagination={{ basePath: "/tvshows", page, totalPages }}
+        error={error}
+        onRetry={retry}
+        pagination={{ basePath: "/tvshows", page: page ?? 1, totalPages }}
       />
     </Layout>
   );

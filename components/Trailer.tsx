@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import React, { useEffect } from "react";
 import { FiX } from "react-icons/fi";
+import { useDialogFocus } from "../hooks/useDialogFocus";
 
 interface TrailerProps {
   trailer_key: string;
@@ -8,6 +9,7 @@ interface TrailerProps {
 }
 
 function Trailer({ trailer_key, handleClose }: TrailerProps) {
+  const dialogRef = useDialogFocus<HTMLDivElement>();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && handleClose();
     window.addEventListener("keydown", onKey);
@@ -23,6 +25,8 @@ function Trailer({ trailer_key, handleClose }: TrailerProps) {
       onClick={handleClose}
     >
       <motion.div
+        ref={dialogRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-label="Trailer"

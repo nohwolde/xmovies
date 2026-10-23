@@ -7,7 +7,7 @@ import Top10Row from "../components/home/Top10Row";
 import ContinueCard from "../components/media/ContinueCard";
 import MediaRow, { RowShell } from "../components/media/MediaRow";
 import { usePersistedState } from "../hooks/usePersistedState";
-import { MediaItem, MediaType, getMediaType, tmdbList } from "../lib/tmdb";
+import { MediaItem, MediaType, getMediaType, slimItems, tmdbList } from "../lib/tmdb";
 
 const ANIME_PARAMS = { with_genres: 16, with_original_language: "ja", sort_by: "popularity.desc" };
 
@@ -31,20 +31,7 @@ interface HomeProps {
   rows: Record<ToggleRow, MediaItem[]>;
 }
 
-// Keep the SSR payload small: rows only need card fields
-const CARD_FIELDS = ["id", "title", "name", "poster_path", "backdrop_path", "vote_average", "release_date", "first_air_date", "genre_ids", "media_type"];
-function slim(items: MediaItem[], withOverview = false): MediaItem[] {
-  return items.map((item) => {
-    const out: any = {};
-    for (const key of withOverview ? [...CARD_FIELDS, "overview"] : CARD_FIELDS) {
-      if (item[key] !== undefined) out[key] = item[key];
-    }
-    return out;
-  });
-}
-
 export const getServerSideProps: GetServerSideProps<HomeProps> = async ({ res }) => {
-  res.setHeader("Cache-Control", "public, s-maxage=600, stale-while-revalidate=3600");
   const [featured, top10, onAir, upcoming, drama, animeShows, animeMovies, trending, popular, topRated, comedy] =
     await Promise.all([
       tmdbList("/trending/all/day"),
@@ -59,16 +46,22 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async ({ res })
       toggleRows.topRated("movie"),
       toggleRows.comedy("movie"),
     ]);
+  // tmdbList returns [] on failure; don't let the CDN hold an empty home page for an hour
+  const degraded = [featured, top10, trending, popular].some((list) => !list.length);
+  res.setHeader(
+    "Cache-Control",
+    degraded ? "public, s-maxage=30" : "public, s-maxage=600, stale-while-revalidate=3600"
+  );
   return {
     props: {
-      featured: slim(featured.filter((item) => item.media_type !== "person").slice(0, 8), true),
-      top10: slim(top10.filter((item) => item.media_type !== "person"), true),
-      onAir: slim(onAir),
-      upcoming: slim(upcoming),
-      drama: slim(drama),
-      animeShows: slim(animeShows),
-      animeMovies: slim(animeMovies),
-      rows: { trending: slim(trending), popular: slim(popular), topRated: slim(topRated), comedy: slim(comedy) },
+      featured: slimItems(featured.filter((item) => item.media_type !== "person").slice(0, 8), true),
+      top10: slimItems(top10.filter((item) => item.media_type !== "person"), true),
+      onAir: slimItems(onAir),
+      upcoming: slimItems(upcoming),
+      drama: slimItems(drama),
+      animeShows: slimItems(animeShows),
+      animeMovies: slimItems(animeMovies),
+      rows: { trending: slimItems(trending), popular: slimItems(popular), topRated: slimItems(topRated), comedy: slimItems(comedy) },
     },
   };
 };
@@ -121,6 +114,7 @@ const Home: NextPage<HomeProps> = ({ featured, top10, onAir, upcoming, drama, an
       <Head>
         <title>NMOVIES - Watch Movies & TV Shows Online</title>
       </Head>
+      <h1 className="sr-only">NMOVIES - Watch Movies & TV Shows Online</h1>
 
       <HeroCarousel items={featured} rankLabel={rankLabelFor(top10)} />
 

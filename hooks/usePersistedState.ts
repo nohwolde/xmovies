@@ -1,17 +1,5 @@
-import { useSyncExternalStore } from "react";
 import { useSelector } from "react-redux";
-
-const noopSubscribe = () => () => {};
-
-// False on the server and during hydration, true afterwards (and immediately
-// for components mounted later, e.g. after a client-side navigation).
-export function useHydrated() {
-  return useSyncExternalStore(
-    noopSubscribe,
-    () => true,
-    () => false
-  );
-}
+import { useHydrated } from "./useHydrated";
 
 // Persisted redux state (MyList, ContinueWatching, CurrentState...) only exists
 // in the browser's localStorage. The server and the first client render must

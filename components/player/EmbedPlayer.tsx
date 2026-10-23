@@ -7,7 +7,7 @@ import {
   getInitialSourceIndex,
   getNextSourceIndex,
 } from "../../utils/video-sources";
-import { useHydrated } from "../../hooks/usePersistedState";
+import { useHydrated } from "../../hooks/useHydrated";
 
 const PREFERRED_SOURCE_KEY = "xmovies:preferred-source";
 export const LOAD_TIMEOUT_MS = 15000;

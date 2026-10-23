@@ -10,7 +10,7 @@ export default function Terms() {
       <p>Terms</p>
       <p>
         By accessing this Website, accessible from{" "}
-        <a href="https://whatsnext-v2.vercel.app">whatsnext</a>, you are
+        <a href="https://nmovies.app">NMOVIES</a>, you are
         agreeing to be bound by these Website Terms and Conditions of Use and
         agree that you are responsible for the agreement with any applicable
         local laws. If you disagree with any of these terms, you are prohibited
@@ -22,7 +22,7 @@ export default function Terms() {
       <p>Use License</p>
       <p>
         Permission is granted to temporarily download one copy of the materials
-        on whatsnext's Website for personal, non-commercial transitory viewing
+        on NMOVIES's Website for personal, non-commercial transitory viewing
         only. This is the grant of a license, not a transfer of title, and under
         this license you may not:
       </p>
@@ -33,7 +33,7 @@ export default function Terms() {
           display;
         </li>
         <li>
-          attempt to reverse engineer any software contained on whatsnext's
+          attempt to reverse engineer any software contained on NMOVIES's
           Website;
         </li>
         <li>
@@ -46,7 +46,7 @@ export default function Terms() {
         </li>
       </ul>
       <p>
-        This will let whatsnext to terminate upon violations of any of these
+        This will let NMOVIES to terminate upon violations of any of these
         restrictions. Upon termination, your viewing right will also be
         terminated and you should destroy any downloaded materials in your
         possession whether it is printed or electronic format.
@@ -55,9 +55,9 @@ export default function Terms() {
     <li>
       <p>Disclaimer</p>
       <p>
-        All the materials on whatsnext's Website are provided “as is”. whatsnext
+        All the materials on NMOVIES's Website are provided “as is”. NMOVIES
         makes no warranties, may it be expressed or implied, therefore negates
-        all other warranties. Furthermore, whatsnext does not make any
+        all other warranties. Furthermore, NMOVIES does not make any
         representations concerning the accuracy or reliability of the use of the
         materials on its Website or otherwise relating to such materials or any
         sites linked to this Website.
@@ -66,9 +66,9 @@ export default function Terms() {
     <li>
       <p>Limitations</p>
       <p>
-        whatsnext or its suppliers will not be hold accountable for any damages
+        NMOVIES or its suppliers will not be hold accountable for any damages
         that will arise with the use or inability to use the materials on
-        whatsnext's Website, even if whatsnext or an authorize representative of
+        NMOVIES's Website, even if NMOVIES or an authorize representative of
         this Website has been notified, orally or written, of the possibility of
         such damage. Some jurisdiction does not allow limitations on implied
         warranties or limitations of liability for incidental damages, these
@@ -78,27 +78,27 @@ export default function Terms() {
     <li>
       <p>Revisions and Errata</p>
       <p>
-        The materials appearing on whatsnext's Website may include technical,
-        typographical, or photographic errors. whatsnext will not promise that
+        The materials appearing on NMOVIES's Website may include technical,
+        typographical, or photographic errors. NMOVIES will not promise that
         any of the materials in this Website are accurate, complete, or current.
-        whatsnext may change the materials contained on its Website at any time
-        without notice. whatsnext does not make any commitment to update the
+        NMOVIES may change the materials contained on its Website at any time
+        without notice. NMOVIES does not make any commitment to update the
         materials.
       </p>
     </li>
     <li>
       <p>Links</p>
       <p>
-        whatsnext has not reviewed all of the sites linked to its Website and is
+        NMOVIES has not reviewed all of the sites linked to its Website and is
         not responsible for the contents of any such linked site. The presence
-        of any link does not imply endorsement by whatsnext of the site. The use
+        of any link does not imply endorsement by NMOVIES of the site. The use
         of any linked website is at the user's own risk.
       </p>
     </li>
     <li>
       <p>Site Terms of Use Modifications</p>
       <p>
-        whatsnext may revise these Terms of Use for its Website at any time
+        NMOVIES may revise these Terms of Use for its Website at any time
         without prior notice. By using this Website, you are agreeing to be
         bound by the current version of these Terms and Conditions of Use.
       </p>
@@ -112,7 +112,7 @@ export default function Terms() {
     <li>
       <p>Governing Law</p>
       <p>
-        Any claim related to whatsnext's Website shall be governed by the laws
+        Any claim related to NMOVIES's Website shall be governed by the laws
         of Country without regards to its conflict of law provisions.
       </p>
     </li>

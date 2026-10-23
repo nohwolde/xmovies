@@ -1,5 +1,4 @@
 import Head from "next/head";
-import { useRouter } from "next/router";
 import React, { useEffect, useState } from "react";
 import { FaPlay } from "react-icons/fa";
 import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
@@ -10,7 +9,7 @@ import PersonCard from "../../components/media/PersonCard";
 import { SetContinueWatching, SetCurrentState } from "../../redux/actions/tvShowAction";
 import EmbedPlayer from "../../components/player/EmbedPlayer";
 import { usePersistedState } from "../../hooks/usePersistedState";
-import { MediaItem, formatRuntime, getTitle, imageUrl, notFoundOrThrow, tmdb } from "../../lib/tmdb";
+import { MediaItem, formatRuntime, getTitle, imageUrl, notFoundOrThrow, tmdb, trimDetail } from "../../lib/tmdb";
 import { isAnime } from "../../utils/video-sources";
 
 interface Episode {
@@ -45,8 +44,7 @@ function useSeasonEpisodes(showId: string | undefined, seasons: number[]) {
 }
 
 function TvEpisode({ res: data }: { res: MediaItem }) {
-  const router = useRouter();
-  const id = router.query.id as string | undefined;
+  const id = data?.id ? String(data.id) : undefined;
   const dispatch = useDispatch();
   const { value: currentState, ready } = usePersistedState<any[]>("CurrentState", []);
   const saved = currentState.find((item) => item.id == id);
@@ -124,7 +122,11 @@ function TvEpisode({ res: data }: { res: MediaItem }) {
     <>
       <Head>
         <title>{`${getTitle(data)} | NMOVIES`}</title>
-        <meta name="description" content={data.overview} />
+        <meta key="description" name="description" content={data.overview} />
+        <meta key="og:title" property="og:title" content={getTitle(data)} />
+        <meta key="og:description" property="og:description" content={data.overview} />
+        {data.backdrop_path && <meta property="og:image" content={imageUrl(data.backdrop_path, "w1280")!} />}
+        <meta key="og:type" property="og:type" content="video.tv_show" />
       </Head>
 
       <DetailContainer {...data} media_type="tv" />
@@ -227,9 +229,9 @@ function TvEpisode({ res: data }: { res: MediaItem }) {
                     </div>
                     <div className="min-w-0 flex-1 py-1">
                       <div className="flex items-baseline justify-between gap-2">
-                        <h3 className="line-clamp-1 font-semibold">
+                        <span className="line-clamp-1 font-semibold">
                           {ep.episode_number}. {ep.name || `Episode ${ep.episode_number}`}
-                        </h3>
+                        </span>
                         {formatRuntime(ep.runtime) && (
                           <span className="shrink-0 text-xs text-white/40">{formatRuntime(ep.runtime)}</span>
                         )}
@@ -261,11 +263,15 @@ export async function getStaticPaths() {
 
 export const getStaticProps = async (context: any) => {
   try {
-    const res = await tmdb(`/tv/${context.params.id}`, {
+    const res = await tmdb<MediaItem>(`/tv/${context.params.id}`, {
       append_to_response: "credits,recommendations,videos,images",
       include_image_language: "en,null",
     });
-    return { props: { res }, revalidate: 60 * 60 * 24 };
+    // TMDB also resolves ids like "1399-game-of-thrones"; send those to the canonical URL
+    if (String(res.id) !== context.params.id) {
+      return { redirect: { destination: `/tv/${res.id}`, permanent: true } };
+    }
+    return { props: { res: trimDetail(res) }, revalidate: 60 * 60 * 24 };
   } catch (error) {
     return notFoundOrThrow(error);
   }

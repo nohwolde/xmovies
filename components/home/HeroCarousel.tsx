@@ -97,11 +97,13 @@ function HeroCarousel({ items, rankLabel }: HeroCarouselProps) {
           animate={{ opacity: 1, y: 0, transition: { duration: 0.6, delay: 0.2 } }}
           className="max-w-xl space-y-4"
         >
-          {logo ? (
-            <img src={logo} alt={getTitle(item)} className="max-h-28 md:max-h-40 max-w-[80%] object-contain object-left drop-shadow-2xl" />
-          ) : (
-            <h1 className="text-4xl md:text-6xl font-black leading-tight text-shadow">{getTitle(item)}</h1>
-          )}
+          <h2 className="text-4xl md:text-6xl font-black leading-tight text-shadow">
+            {logo ? (
+              <img src={logo} alt={getTitle(item)} className="max-h-28 md:max-h-40 max-w-[80%] object-contain object-left drop-shadow-2xl" />
+            ) : (
+              getTitle(item)
+            )}
+          </h2>
 
           {rank && (
             <div className="flex items-center gap-2 text-base md:text-lg font-semibold text-shadow">

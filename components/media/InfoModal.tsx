@@ -1,8 +1,9 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { FaPlay } from "react-icons/fa";
 import { FiCheck, FiPlus, FiX, FiYoutube } from "react-icons/fi";
+import { useDialogFocus } from "../../hooks/useDialogFocus";
 import { useMyList } from "../../hooks/useMyList";
 import {
   MediaItem,
@@ -30,7 +31,7 @@ function InfoModal({ id: initialId, mediaType: initialType, onClose }: InfoModal
   const [logo, setLogo] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const [showTrailer, setShowTrailer] = useState(false);
-  const panelRef = useRef<HTMLDivElement>(null);
+  const panelRef = useDialogFocus<HTMLDivElement>();
   const { inList, toggle } = useMyList(data, current.type);
 
   useEffect(() => {
@@ -90,6 +91,7 @@ function InfoModal({ id: initialId, mediaType: initialType, onClose }: InfoModal
     >
       <motion.div
         ref={panelRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-label={title || "Details"}
