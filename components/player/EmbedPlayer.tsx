@@ -60,6 +60,11 @@ export function playerReducer(state: PlayerState, action: PlayerAction): PlayerS
     // Only timeouts mark a source as failed; switching away by hand doesn't,
     // so a source that already worked stays available as a fallback.
     case "select":
+      // Re-selecting the current source: keep a playing video as is, otherwise
+      // force a fresh load (new iframe key + timeout) instead of a stuck spinner
+      if (action.index === state.index) {
+        return state.status === "loaded" ? state : { ...state, status: "loading", attempt: state.attempt + 1 };
+      }
       return { ...state, index: action.index, status: "loading" };
     case "restore":
       return { ...state, index: action.index, tried: new Set(), status: "loading" };
@@ -144,8 +149,8 @@ const EmbedPlayer = ({
 
   return (
     <div className="w-full" data-testid="embed-player">
-      <div className="mb-4 px-2 flex flex-col sm:flex-row items-start sm:items-center gap-3">
-        <span className="text-sm font-medium text-white/70">Video Source:</span>
+      <div className="mb-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+        <span className="text-sm font-medium text-white/60">Video Source:</span>
         <div className="flex flex-wrap gap-2" role="group" aria-label="Video source">
           {availableSources.map((item, index) => (
             <button
@@ -153,10 +158,10 @@ const EmbedPlayer = ({
               type="button"
               aria-pressed={index === safeIndex}
               onClick={() => selectSource(index)}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition-all duration-300 cursor-pointer ${
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors cursor-pointer ${
                 index === safeIndex
-                  ? "bg-[#4815ff] text-white shadow-lg shadow-[#4815ff]/25"
-                  : "bg-neutral-800 text-white/80 hover:bg-neutral-700 hover:text-white"
+                  ? "bg-white text-black"
+                  : "bg-white/5 text-white/80 hover:bg-white/10 hover:text-white"
               }`}
             >
               {item.name}
@@ -184,7 +189,7 @@ const EmbedPlayer = ({
             className="absolute inset-0 flex items-center justify-center pointer-events-none"
             role="status"
           >
-            <div className="h-10 w-10 rounded-full border-4 border-white/20 border-t-[#4815ff] animate-spin" />
+            <div className="h-10 w-10 rounded-full border-4 border-white/20 border-t-accent animate-spin" />
             <span className="sr-only">Loading player</span>
           </div>
         )}
@@ -198,7 +203,7 @@ const EmbedPlayer = ({
             <button
               type="button"
               onClick={retry}
-              className="px-4 py-2 rounded-lg bg-[#4815ff] text-white text-sm font-medium"
+              className="px-4 py-2 rounded-lg bg-white text-black text-sm font-semibold hover:bg-white/85"
             >
               Try again
             </button>
@@ -207,7 +212,7 @@ const EmbedPlayer = ({
       </div>
 
       {nextIndex !== null && (
-        <p className="px-2 pt-2 text-xs text-white/50">
+        <p className="pt-2 text-xs text-white/50">
           Not playing?{" "}
           <button
             type="button"

@@ -1,54 +1,61 @@
-import React, { useEffect, useState } from 'react'
-import Card from './Card'
-import CardModal from './CardModal'
-import Pagination from './Pagination'
+import React from "react";
+import { MediaItem, MediaType } from "../../lib/tmdb";
+import MediaCard from "../media/MediaCard";
+import { TypeToggle, useInfoModal } from "../media/MediaRow";
+import Pagination from "./Pagination";
 
 interface ContainerProps {
-    Data : []
-    heading : string
-    place : string,
-    handleChange?:any;
-    select?:any;
+  Data: MediaItem[];
+  heading: string;
+  subheading?: string;
+  mediaType?: MediaType;
+  // Shows a Movies/Shows toggle when provided
+  toggle?: { value: MediaType; onChange: (type: MediaType) => void };
+  pagination?: { basePath: string; page: number; totalPages?: number };
+  loading?: boolean;
+  emptyMessage?: string;
 }
 
-function Container(data : ContainerProps) {
+// Catalog grid used by the list, genre, search, cast and recommendation sections
+function Container({ Data, heading, subheading, mediaType, toggle, pagination, loading, emptyMessage }: ContainerProps) {
+  const { open, modal } = useInfoModal();
+  const items = (Data ?? []).filter((item) => item && item.media_type !== "person");
 
-  const [selected,setSelected] = useState(false)
+  return (
+    <section className="px-4 md:px-12 py-6" aria-label={heading}>
+      {modal}
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl md:text-4xl font-black tracking-tight">{heading}</h1>
+          {subheading && <p className="mt-1 text-sm text-white/50">{subheading}</p>}
+        </div>
+        {toggle && <TypeToggle value={toggle.value} onChange={toggle.onChange} />}
+      </div>
 
-  
+      {loading && !items.length ? (
+        <div className="grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6" aria-hidden>
+          {Array.from({ length: 12 }).map((_, i) => (
+            <div key={i} className="aspect-video animate-pulse rounded-lg bg-white/5" />
+          ))}
+        </div>
+      ) : items.length ? (
+        <div className="grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+          {items.map((item) => (
+            <MediaCard
+              key={`${item.media_type ?? mediaType}-${item.id}`}
+              item={item}
+              mediaType={toggle?.value ?? mediaType}
+              onSelect={open}
+            />
+          ))}
+        </div>
+      ) : (
+        <p className="py-20 text-center text-white/50">{emptyMessage ?? "Nothing to show here yet."}</p>
+      )}
 
-  const handleSelected = () => {
-    setSelected(!selected)
-  }
-  return data?.Data?.length > 0 ?(
-    <div className="w-full h-full mt-6 container mx-auto min-h-screen">
-    <div className="p-1 relative flex justify-between">
-        <h1 className="font-black text-2xl">{data.heading}</h1>
-        {data.select && (
-
-        <select id="countries" onChange={data.handleChange} className="bg-neutral-900 text-gray-200 font-semibold px-3 py-2 outline-none rounded-sm">
-  <option  value="movie" >Movies</option>
-  <option  value="tv">Shows</option>
-  
-</select>
-        )}
-    </div>
-    
-    <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-x-2 gap-y-4 p-2 container mx-auto">
-
-    {data?.Data?.map((item:any,index) => (
-        
-        <Card  key={index} {...item} heading={data.heading} selected={handleSelected}/>
-       
-    ))}
-    
-    </div>
-    {data.heading.includes("Shows") ||data.heading.includes("Movies")  || data.heading.includes("Series")? (
-
-    <Pagination place={data.place}/>
-    ): null}
-    </div>
-  ) : null
+      {pagination && items.length > 0 && <Pagination {...pagination} />}
+    </section>
+  );
 }
 
-export default Container
+export default Container;

@@ -1,33 +1,25 @@
-import Link from "next/link";
 import { useRouter } from "next/router";
-import React, { useEffect, useState } from "react";
+import React from "react";
 import Container from "../../components/container/Container";
 import Layout from "../../components/layout/Layout";
+import { useTmdbPage } from "../../hooks/useTmdbPage";
 
 function Search() {
-  const [data, setData] = useState<any>([]);
   const router = useRouter();
-  const { slug } = router.query;
-
-  useEffect(() => {
-    fetchMovies();
-  }, [slug]);
-
-  const fetchMovies = async () => {
-    let url = `https://api.themoviedb.org/3/search/multi?query=${
-      slug && slug[0]
-    }&api_key=cfe422613b250f702980a3bbf9e90716`;
-    let req = await fetch(url);
-    let res = await req.json();
-    console.log(res);
-    setData(res.results);
-  };
-  console.log(slug);
-  console.log(data);
+  const slug = (router.query.slug as string[] | undefined) ?? [];
+  const query = slug[0] ?? "";
+  const page = Math.max(1, parseInt(slug[1] ?? "1", 10) || 1);
+  const { items, totalPages, loading } = useTmdbPage(query ? "/search/multi" : null, { query, page });
 
   return (
-    <Layout title={"Showing Results"}>
-      <Container Data={data} place="" heading="Showing Results for" />
+    <Layout title={query ? `Search: ${query}` : "Search"}>
+      <Container
+        Data={items}
+        heading={query ? `Results for “${query}”` : "Search"}
+        loading={loading || !router.isReady}
+        emptyMessage={`No movies or shows match “${query}”.`}
+        pagination={{ basePath: `/search/${encodeURIComponent(query)}`, page, totalPages }}
+      />
     </Layout>
   );
 }

@@ -1,54 +1,53 @@
-import React from "react";
-import Backdrop from "./Backdrop";
-import {motion} from "framer-motion"
-
+import { motion } from "framer-motion";
+import React, { useEffect } from "react";
+import { FiX } from "react-icons/fi";
 
 interface TrailerProps {
-    trailer_key:string;
-    handleClose:any;
+  trailer_key: string;
+  handleClose: () => void;
 }
 
-function Trailer(tr : TrailerProps) {
-
-  const dropIn = {
-    hidden : {
-      y:"-100vh",
-      opacity:0
-    },
-    visible : {
-      y:0,
-      opacity:1,
-      transition : {
-        type:"spring",
-        damping:25,
-        stiffness:500,
-      }
-    },
-    exit: {
-      y:"100vh",
-      opacity:0
-    }
-  }
- 
+function Trailer({ trailer_key, handleClose }: TrailerProps) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && handleClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [handleClose]);
 
   return (
-    <Backdrop onClick={tr.handleClose}>
-      
-          <motion.div
-          
-            className=""
-            onClick={(e) => e.stopPropagation()}
-            variants={dropIn}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-          >
-            <iframe width="1014" height="578" className="drop-shadow-2xl"
-  src={`https://www.youtube.com/embed/${tr.trailer_key}`}
-  frameBorder="0"></iframe>
-          </motion.div>
-        
-    </Backdrop>
+    <motion.div
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={handleClose}
+    >
+      <motion.div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Trailer"
+        initial={{ scale: 0.95 }}
+        animate={{ scale: 1 }}
+        className="relative aspect-video w-full max-w-5xl overflow-hidden rounded-xl bg-black shadow-2xl ring-1 ring-white/10"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <iframe
+          className="absolute inset-0 h-full w-full"
+          src={`https://www.youtube.com/embed/${trailer_key}?autoplay=1&rel=0`}
+          title="Trailer"
+          allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+          allowFullScreen
+        />
+        <button
+          type="button"
+          onClick={handleClose}
+          aria-label="Close trailer"
+          className="absolute right-3 top-3 rounded-full bg-black/60 p-2 hover:bg-black/80"
+        >
+          <FiX size={20} />
+        </button>
+      </motion.div>
+    </motion.div>
   );
 }
 

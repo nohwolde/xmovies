@@ -1,22 +1,23 @@
-import React from 'react'
 import Head from "next/head";
-import {motion} from "framer-motion"
+import React from "react";
 
 type LayoutProps = {
-    title:any;
-    children:any
-}
+  title: string;
+  children: React.ReactNode;
+};
 
-function Layout(data :LayoutProps) {
+// Standard page wrapper: clears the fixed navbar and sets the document title
+function Layout({ title, children }: LayoutProps) {
+  const fullTitle = title ? `${title} | NMOVIES` : "NMOVIES";
   return (
-    <div className="mt-20  ">
-        <Head>
-        <title>{data.title}</title>
-        <meta property="og:title" content={data.title} key={data.title} />
+    <div className="pt-20 md:pt-24">
+      <Head>
+        <title>{fullTitle}</title>
+        <meta property="og:title" content={fullTitle} />
       </Head>
-      {data.children}
+      {children}
     </div>
-  )
+  );
 }
 
-export default Layout
+export default Layout;

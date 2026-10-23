@@ -1,43 +1,56 @@
-import { useRouter } from 'next/router'
-import React, { useEffect, useState } from 'react'
-import Container from '../../components/container/Container'
-import Layout from '../../components/layout/Layout'
-const axios = require("axios")
+import { useRouter } from "next/router";
+import React, { useState } from "react";
+import Container from "../../components/container/Container";
+import Layout from "../../components/layout/Layout";
+import { useTmdbPage } from "../../hooks/useTmdbPage";
+import { MediaType } from "../../lib/tmdb";
+
+// TV merges several movie genres into combined ones
+const MOVIE_TO_TV_GENRE: Record<number, number> = {
+  28: 10759, // Action -> Action & Adventure
+  12: 10759, // Adventure -> Action & Adventure
+  878: 10765, // Science Fiction -> Sci-Fi & Fantasy
+  14: 10765, // Fantasy -> Sci-Fi & Fantasy
+  10752: 10768, // War -> War & Politics
+};
+
+// Slug format: /genre/<Name-Words>-<genreId>/<page>
+function parseGenreSlug(slug: string | undefined) {
+  const parts = (slug ?? "").split("-");
+  const id = Number(parts.pop());
+  const name = parts.join(" ").replace(/\s+/g, " ").trim();
+  // TV-only genres (e.g. "Sci-Fi & Fantasy", ids >= 10759) have no movie equivalent
+  const tvOnly = name.includes("&") || id >= 10759;
+  return { id: Number.isFinite(id) ? id : null, name, tvOnly };
+}
 
 function Genre() {
-  const [data,setData] = useState<any>([])
-  const router = useRouter()
-  const [type,setType] = useState<any>('movie')
-  const [showSelect,setShowSelect] = useState(true)
+  const router = useRouter();
+  const slug = (router.query.slug as string[] | undefined) ?? [];
+  const genre = parseGenreSlug(slug[0]);
+  const page = Math.max(1, parseInt(slug[1] ?? "1", 10) || 1);
+  const [type, setType] = useState<MediaType>("movie");
+  const effectiveType: MediaType = genre.tvOnly ? "tv" : type;
 
-  const {slug} = router.query
+  const { items, totalPages, loading } = useTmdbPage(genre.id ? `/discover/${effectiveType}` : null, {
+    with_genres: genre.id === null ? undefined : effectiveType === "tv" ? MOVIE_TO_TV_GENRE[genre.id] ?? genre.id : genre.id,
+    sort_by: "popularity.desc",
+    page,
+  });
 
-  useEffect(() => {
-    const gen = fetchGenres()
-    if (slug && slug[0]?.includes("&")) {
-      setShowSelect(false)
-    }
-    return () => {
-      gen
-    }
-  },[type,slug])
-
-  const fetchGenres = async () => {
-    let url = `https://api.themoviedb.org/3/discover/${slug && slug[0].includes("&") ? "tv" : type}?page=${slug && slug[1]}&api_key=cfe422613b250f702980a3bbf9e90716&with_genres=${slug && slug[0].split("-")[1]}`
-    let req = await axios.get(url)
-    let res = req.data
-    setData(res.results)
-  }
-  const handleChange = (e:any) => {
-    setType(e.target.value)
-}
-
-  console.log(data)
   return (
-    <Layout title={slug && slug[0]?.split("-")[0]} >
-    <Container Data={data} place={`/genre/${slug && slug[0]}`} heading={slug && slug[0].includes("&") ? `${slug && slug[0]?.split("-")[0]} Series` : type === "movie" ? `${slug && slug[0]?.split("-")[0]} Movies` : `${slug && slug[0]?.split("-")[0]} Series`} handleChange={handleChange} select={showSelect}/>
+    <Layout title={genre.name}>
+      <Container
+        Data={items}
+        heading={genre.name || "Genre"}
+        subheading={effectiveType === "tv" ? "Series" : "Movies"}
+        mediaType={effectiveType}
+        loading={loading || !router.isReady}
+        toggle={genre.tvOnly ? undefined : { value: type, onChange: setType }}
+        pagination={{ basePath: `/genre/${slug[0] ?? ""}`, page, totalPages }}
+      />
     </Layout>
-  )
+  );
 }
 
-export default Genre
+export default Genre;
