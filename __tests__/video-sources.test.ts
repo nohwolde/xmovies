@@ -58,17 +58,22 @@ describe("isAnime", () => {
     expect(isAnime({ genres: null })).toBe(false);
   });
 
-  it("treats animated movies as anime", () => {
+  it("treats animation with no origin data as anime", () => {
     expect(isAnime({ genres: [animation] })).toBe(true);
     expect(isAnime({ genres: [{ id: 18, name: "Drama" }] })).toBe(false);
   });
 
-  it("requires a Japanese origin for TV shows", () => {
+  // Shapes as TMDB returns them: movie and TV details both have origin_country
+  it("requires a Japanese origin country for movies and TV shows", () => {
+    const spiritedAway = { genres: [animation], origin_country: ["JP"], original_language: "ja" };
+    const toyStory = { genres: [animation], origin_country: ["US"], original_language: "en" };
+    expect(isAnime(spiritedAway)).toBe(true);
+    expect(isAnime(toyStory)).toBe(false);
     expect(isAnime({ genres: [animation], origin_country: ["JP"] })).toBe(true);
     expect(isAnime({ genres: [animation], origin_country: ["US"] })).toBe(false);
   });
 
-  it("uses the original language for movies when TMDB provides it", () => {
+  it("falls back to the original language when origin_country is missing", () => {
     expect(isAnime({ genres: [animation], original_language: "ja" })).toBe(true);
     expect(isAnime({ genres: [animation], original_language: "en" })).toBe(false);
   });

@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import EmbedPlayer, { LOAD_TIMEOUT_MS } from "../components/player/EmbedPlayer";
+import EmbedPlayer, { LOAD_TIMEOUT_MS, preferredSourceKey } from "../components/player/EmbedPlayer";
 import { VideoSource } from "../utils/video-sources";
 
 const makeSource = (id: string): VideoSource => ({
@@ -12,6 +12,7 @@ const makeSource = (id: string): VideoSource => ({
 
 const SOURCES = [makeSource("a"), makeSource("b"), makeSource("c")];
 const movie = { type: "movie" as const, id: "550" };
+const MOVIE_KEY = preferredSourceKey("movie");
 
 const iframeSrc = () => screen.queryByTitle(/watch|video player/i)?.getAttribute("src") ?? null;
 const loadIframe = () => fireEvent.load(screen.getByTitle(/watch|video player/i));
@@ -40,14 +41,14 @@ describe("EmbedPlayer", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Source b" }));
     expect(iframeSrc()).toBe("https://b.test/m/550");
-    expect(window.localStorage.getItem("xmovies:preferred-source")).toBeNull();
+    expect(window.localStorage.getItem(MOVIE_KEY)).toBeNull();
 
     loadIframe();
-    expect(window.localStorage.getItem("xmovies:preferred-source")).toBe("b");
+    expect(window.localStorage.getItem(MOVIE_KEY)).toBe("b");
   });
 
   it("doesn't remember a source that timed out", () => {
-    window.localStorage.setItem("xmovies:preferred-source", "b");
+    window.localStorage.setItem(MOVIE_KEY, "b");
     render(<EmbedPlayer media={movie} sources={SOURCES} />);
 
     act(() => {
@@ -56,7 +57,7 @@ describe("EmbedPlayer", () => {
     expect(iframeSrc()).toBe("https://c.test/m/550");
     loadIframe();
 
-    expect(window.localStorage.getItem("xmovies:preferred-source")).toBe("c");
+    expect(window.localStorage.getItem(MOVIE_KEY)).toBe("c");
   });
 
   it("leaves a playing video alone when its source is clicked again", () => {
@@ -84,7 +85,7 @@ describe("EmbedPlayer", () => {
   });
 
   it("restores the preferred source on mount", () => {
-    window.localStorage.setItem("xmovies:preferred-source", "b");
+    window.localStorage.setItem(MOVIE_KEY, "b");
     render(<EmbedPlayer media={movie} sources={SOURCES} />);
 
     expect(iframeSrc()).toBe("https://b.test/m/550");
@@ -103,6 +104,44 @@ describe("EmbedPlayer", () => {
     render(<EmbedPlayer media={movie} />);
 
     expect(iframeSrc()).toBe("https://vixsrc.to/movie/550");
+  });
+
+  it("keeps the preferred source separate per category", () => {
+    // saved by anime pages, plus the old global key from before categories
+    window.localStorage.setItem(preferredSourceKey("anime-movie"), "vidrock");
+    window.localStorage.setItem(preferredSourceKey("anime-tv"), "vidlink");
+    window.localStorage.setItem("xmovies:preferred-source", "vidlink");
+    render(<EmbedPlayer media={movie} />);
+
+    expect(iframeSrc()).toBe("https://vixsrc.to/movie/550");
+  });
+
+  it("saves an anime source under the anime category only", () => {
+    render(<EmbedPlayer media={{ type: "movie", id: "129" }} anime />);
+    loadIframe();
+
+    expect(window.localStorage.getItem(preferredSourceKey("anime-movie"))).toBe("vidrock");
+    expect(window.localStorage.getItem(MOVIE_KEY)).toBeNull();
+  });
+
+  it("starts the new list's first source when the category changes while mounted", () => {
+    const { container, rerender } = render(<EmbedPlayer media={movie} />);
+    fireEvent.click(screen.getByRole("button", { name: "Source 2" }));
+    expect(iframeSrc()).toBe("https://vidlink.pro/movie/550");
+
+    const observer = new MutationObserver(() => {});
+    observer.observe(container, { childList: true, subtree: true });
+    rerender(<EmbedPlayer media={{ type: "movie", id: "129" }} anime />);
+    const mounted = observer
+      .takeRecords()
+      .flatMap((record) => Array.from(record.addedNodes))
+      .filter((node): node is HTMLIFrameElement => node instanceof HTMLIFrameElement)
+      .map((iframe) => iframe.src);
+    observer.disconnect();
+
+    // index 1 in the anime-movie list is vidsrc.su; it must never mount
+    expect(mounted).toEqual(["https://vidrock.net/movie/129"]);
+    expect(iframeSrc()).toBe("https://vidrock.net/movie/129");
   });
 
   it("calls onLoad and clears the spinner once the iframe loads", () => {

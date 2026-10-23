@@ -61,8 +61,9 @@ export function isAnime(data: any): boolean {
 
   if (!hasAnimationGenre) return false;
 
-  // Animation also needs a Japanese origin (TV) or language (movies) when
-  // TMDB provides one, so Pixar and Disney titles use the regular sources
+  // Animation also needs a Japanese origin, so Pixar and Disney titles use
+  // the regular sources. TMDB movie and TV details both include
+  // origin_country; original_language only covers responses without it.
   if (Array.isArray(data.origin_country) && data.origin_country.length) {
     return data.origin_country.includes("JP");
   }
