@@ -8,6 +8,7 @@ import {
   getInitialSourceIndex,
   getNextSourceIndex,
   isAnime,
+  readPlaybackSignal,
 } from "../utils/video-sources";
 
 const makeSource = (id: string): VideoSource => ({
@@ -155,5 +156,92 @@ describe("getInitialSourceIndex", () => {
   it("falls back to the first source", () => {
     expect(getInitialSourceIndex(sources, null)).toBe(0);
     expect(getInitialSourceIndex(sources, "gone")).toBe(0);
+  });
+});
+
+describe("readPlaybackSignal", () => {
+  const byId = (id: string) => ALL_SOURCES.find((s) => s.id === id)!;
+  const vixsrc = byId("vixsrc");
+  const vidlink = byId("vidlink");
+
+  // Shapes recorded from the providers' iframes
+  const VIXSRC_PLAY = {
+    type: "PLAYER_EVENT",
+    event: { event: "play", data: { newstate: "playing" }, video_id: "170060" },
+  };
+  const VIXSRC_TIMEUPDATE = {
+    type: "PLAYER_EVENT",
+    event: { event: "timeupdate", currentTime: 1, duration: 8348.33, video_id: "170060" },
+  };
+  const VIDLINK_MEDIA_DATA = {
+    type: "MEDIA_DATA",
+    data: { 550: { id: 550, type: "movie", progress: { watched: 0, duration: 0 } } },
+  };
+  const VIDLINK_PLAYER_EVENT = {
+    type: "PLAYER_EVENT",
+    data: { event: "timeupdate", currentTime: 0.97, duration: 8348.3, mtmdbId: 550, mediaType: "movie" },
+  };
+  const YANDEX = '{"data":{"type":"initToParent","counterId":98154677},"__yminfo":"__yminfo:1:0.1:0"}';
+
+  it("reads vixsrc player events as ready", () => {
+    expect(readPlaybackSignal(vixsrc, { origin: "https://vixsrc.to", data: VIXSRC_PLAY })).toBe("ready");
+    expect(readPlaybackSignal(vixsrc, { origin: "https://vixsrc.to", data: VIXSRC_TIMEUPDATE })).toBe("ready");
+  });
+
+  it("reads vixsrc player errors as errors", () => {
+    for (const event of ["error", "setupError"]) {
+      expect(
+        readPlaybackSignal(vixsrc, { origin: "https://vixsrc.to", data: { type: "PLAYER_EVENT", event: { event } } })
+      ).toBe("error");
+    }
+  });
+
+  it("reads vidlink media data and player events as ready, and ignores its analytics", () => {
+    expect(readPlaybackSignal(vidlink, { origin: "https://vidlink.pro", data: VIDLINK_MEDIA_DATA })).toBe("ready");
+    expect(readPlaybackSignal(vidlink, { origin: "https://vidlink.pro", data: VIDLINK_PLAYER_EVENT })).toBe(
+      "ready"
+    );
+    expect(readPlaybackSignal(vidlink, { origin: "https://vidlink.pro", data: YANDEX })).toBeNull();
+  });
+
+  it("ignores messages from any other origin", () => {
+    expect(readPlaybackSignal(vixsrc, { origin: "https://vidlink.pro", data: VIXSRC_PLAY })).toBeNull();
+    expect(readPlaybackSignal(vixsrc, { origin: "http://vixsrc.to", data: VIXSRC_PLAY })).toBeNull();
+    expect(readPlaybackSignal(vixsrc, { origin: "https://vixsrc.to.evil.example", data: VIXSRC_PLAY })).toBeNull();
+    expect(readPlaybackSignal(vidlink, { origin: "https://vixsrc.to", data: VIDLINK_MEDIA_DATA })).toBeNull();
+  });
+
+  it("ignores unrecognised or empty messages", () => {
+    for (const data of [null, undefined, "", 42, {}, { type: "something-else" }]) {
+      expect(readPlaybackSignal(vixsrc, { origin: "https://vixsrc.to", data })).toBeNull();
+      expect(readPlaybackSignal(vidlink, { origin: "https://vidlink.pro", data })).toBeNull();
+    }
+  });
+
+  it("has no adapter for providers that post nothing usable", () => {
+    expect(byId("vidrock").signals).toBeUndefined();
+    expect(byId("vidsrc-su").signals).toBeUndefined();
+    expect(readPlaybackSignal(byId("vidrock"), { origin: "https://vidrock.net", data: VIXSRC_PLAY })).toBeNull();
+    expect(readPlaybackSignal(undefined, { origin: "https://vixsrc.to", data: VIXSRC_PLAY })).toBeNull();
+  });
+
+  it("uses each source's own host as its origin", () => {
+    for (const source of ALL_SOURCES) {
+      if (!source.signals) continue;
+      expect(new URL(source.buildUrl({ type: "movie", id: 1 })).origin).toBe(source.signals.origin);
+    }
+  });
+
+  it("treats a throwing adapter as no signal", () => {
+    const source = {
+      ...makeSource("x"),
+      signals: {
+        origin: "https://x",
+        parseMessage: () => {
+          throw new Error("bad shape");
+        },
+      },
+    };
+    expect(readPlaybackSignal(source, { origin: "https://x", data: {} })).toBeNull();
   });
 });
