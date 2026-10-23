@@ -6,6 +6,7 @@ import {
   getAvailableSources,
   getInitialSourceIndex,
   getNextSourceIndex,
+  sourceLabel,
 } from "../../utils/video-sources";
 
 const PREFERRED_SOURCE_KEY = "xmovies:preferred-source";
@@ -94,8 +95,8 @@ const EmbedPlayer = ({
   onLoad,
 }: EmbedPlayerProps) => {
   const availableSources = useMemo(
-    () => getAvailableSources(anime, sources),
-    [anime, sources]
+    () => getAvailableSources(media.type, anime, sources),
+    [media.type, anime, sources]
   );
   const [state, dispatch] = useReducer(playerReducer, initialState);
   const { status, tried, attempt } = state;
@@ -164,7 +165,7 @@ const EmbedPlayer = ({
                   : "bg-white/5 text-white/80 hover:bg-white/10 hover:text-white"
               }`}
             >
-              {item.name}
+              {sourceLabel(item, index)}
             </button>
           ))}
         </div>
@@ -219,7 +220,7 @@ const EmbedPlayer = ({
             onClick={() => selectSource(nextIndex)}
             className="underline hover:text-white"
           >
-            Try {availableSources[nextIndex].name}
+            Try {sourceLabel(availableSources[nextIndex], nextIndex)}
           </button>
         </p>
       )}

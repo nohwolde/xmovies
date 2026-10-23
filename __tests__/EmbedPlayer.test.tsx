@@ -3,15 +3,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import EmbedPlayer, { LOAD_TIMEOUT_MS } from "../components/player/EmbedPlayer";
 import { VideoSource } from "../utils/video-sources";
 
-const makeSource = (id: string, supportsAnime = true): VideoSource => ({
+const makeSource = (id: string): VideoSource => ({
   id,
   name: `Source ${id}`,
-  supportsAnime,
   buildUrl: ({ type, id: mediaId, season, episode }) =>
     type === "movie" ? `https://${id}.test/m/${mediaId}` : `https://${id}.test/t/${mediaId}/${season}/${episode}`,
 });
 
-const SOURCES = [makeSource("a"), makeSource("b"), makeSource("c", false)];
+const SOURCES = [makeSource("a"), makeSource("b"), makeSource("c")];
 const movie = { type: "movie" as const, id: "550" };
 
 const iframeSrc = () => screen.queryByTitle(/watch|video player/i)?.getAttribute("src") ?? null;
@@ -91,10 +90,19 @@ describe("EmbedPlayer", () => {
     expect(iframeSrc()).toBe("https://b.test/m/550");
   });
 
-  it("hides sources that can't play anime", () => {
-    render(<EmbedPlayer media={movie} sources={SOURCES} anime />);
+  it("uses the anime source list for anime and labels sources by position", () => {
+    render(<EmbedPlayer media={{ type: "movie", id: "129" }} anime />);
 
-    expect(screen.queryByRole("button", { name: "Source c" })).not.toBeInTheDocument();
+    expect(iframeSrc()).toBe("https://vidrock.net/movie/129");
+    expect(screen.getByRole("button", { name: "Source 1" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Source 2" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Source 3" })).not.toBeInTheDocument();
+  });
+
+  it("starts regular movies on the movie list", () => {
+    render(<EmbedPlayer media={movie} />);
+
+    expect(iframeSrc()).toBe("https://vixsrc.to/movie/550");
   });
 
   it("calls onLoad and clears the spinner once the iframe loads", () => {
