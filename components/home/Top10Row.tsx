@@ -41,7 +41,7 @@ function Top10Row({ title, items }: { title: string; items: MediaItem[] }) {
                 <Link href={mediaHref(item)}>
                   <a className="absolute inset-0" aria-label={`${i + 1}. ${getTitle(item)}`}>
                     <img
-                      src={imageUrl(expanded && item.backdrop_path ? item.backdrop_path : item.poster_path, expanded ? "w1280" : "w342")!}
+                      src={imageUrl(expanded && item.backdrop_path ? item.backdrop_path : item.poster_path, expanded ? "w780" : "w342")!}
                       alt=""
                       loading="lazy"
                       className="h-full w-full object-cover"

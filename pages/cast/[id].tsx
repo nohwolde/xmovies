@@ -6,7 +6,8 @@ import { MediaItem, imageUrl, tmdb } from "../../lib/tmdb";
 
 function CastMovies() {
   const router = useRouter();
-  const slug = decodeURIComponent((router.query.id as string) ?? "");
+  // router.query is already URL-decoded
+  const slug = (router.query.id as string) ?? "";
   // Slug is "<Name-Words>-<personId>"; older links used spaces in the name
   const personId = slug.split("-").pop();
   const [person, setPerson] = useState<any>(null);

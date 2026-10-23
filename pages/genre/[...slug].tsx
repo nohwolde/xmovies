@@ -16,7 +16,7 @@ const MOVIE_TO_TV_GENRE: Record<number, number> = {
 
 // Slug format: /genre/<Name-Words>-<genreId>/<page>
 function parseGenreSlug(slug: string | undefined) {
-  const parts = decodeURIComponent(slug ?? "").split("-");
+  const parts = (slug ?? "").split("-");
   const id = Number(parts.pop());
   const name = parts.join(" ").replace(/\s+/g, " ").trim();
   // TV-only genres (e.g. "Sci-Fi & Fantasy", ids >= 10759) have no movie equivalent

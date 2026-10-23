@@ -31,8 +31,20 @@ export async function tmdb<T = any>(
     if (value !== undefined && value !== "") query.set(key, String(value));
   }
   const res = await fetch(`${TMDB_BASE}${path}?${query}`);
-  if (!res.ok) throw new Error(`TMDB ${path} failed: ${res.status}`);
+  if (!res.ok) {
+    const error: Error & { status?: number } = new Error(`TMDB ${path} failed: ${res.status}`);
+    error.status = res.status;
+    throw error;
+  }
   return res.json();
+}
+
+// For getStaticProps: only a real 404 becomes a (briefly cached) not-found page.
+// Anything else (rate limit, 5xx, network) is rethrown so ISR keeps serving the
+// last good page instead of caching a 404 until the next deploy.
+export function notFoundOrThrow(error: unknown) {
+  if ((error as { status?: number })?.status === 404) return { notFound: true as const, revalidate: 60 * 60 };
+  throw error;
 }
 
 // Fetches a list endpoint and returns `results`, or [] on failure so one bad
@@ -109,15 +121,19 @@ export function genreNames(item: Partial<MediaItem>, limit = 2): string[] {
 // English (or language-neutral) title logo for hero/detail headers.
 export async function fetchLogo(type: MediaType, id: number | string): Promise<string | null> {
   try {
-    const data = await tmdb<{ logos?: { file_path: string; iso_639_1: string | null }[] }>(
-      `/${type}/${id}/images`,
-      { include_image_language: "en,null" }
-    );
-    const logo = data.logos?.find((l) => l.iso_639_1 === "en") ?? data.logos?.[0];
-    return logo ? imageUrl(logo.file_path, "w500") : null;
+    const data = await tmdb<{ logos?: TmdbLogo[] }>(`/${type}/${id}/images`, { include_image_language: "en,null" });
+    return pickLogo(data.logos);
   } catch {
     return null;
   }
+}
+
+type TmdbLogo = { file_path: string; iso_639_1: string | null };
+
+// Prefer an English logo, then a language-neutral one
+export function pickLogo(logos: TmdbLogo[] | undefined): string | null {
+  const logo = logos?.find((l) => l.iso_639_1 === "en") ?? logos?.[0];
+  return logo ? imageUrl(logo.file_path, "w500") : null;
 }
 
 export async function fetchTrailerKey(type: MediaType, id: number | string): Promise<string | null> {

@@ -19,11 +19,14 @@ export function useTmdbPage(path: string | null, params: Record<string, string |
   useEffect(() => {
     if (!path) return;
     let cancelled = false;
+    // Drop the previous list so stale items (e.g. movies after switching to
+    // Shows) are never shown or opened under the new query
+    setItems([]);
     setLoading(true);
-    tmdb<{ results?: MediaItem[]; cast?: MediaItem[]; total_pages?: number }>(path, params)
+    tmdb<{ results?: MediaItem[]; total_pages?: number }>(path, params)
       .then((data) => {
         if (cancelled) return;
-        setItems(data.results ?? data.cast ?? []);
+        setItems(data.results ?? []);
         setTotalPages(data.total_pages);
       })
       .catch(() => !cancelled && setItems([]))

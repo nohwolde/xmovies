@@ -14,6 +14,7 @@ import {
   getTitle,
   getYear,
   imageUrl,
+  pickLogo,
 } from "../../lib/tmdb";
 import Trailer from "../Trailer";
 
@@ -45,7 +46,9 @@ function DetailContainer({ onPlay, ...data }: DetailContainerProps) {
     let cancelled = false;
     setLogo(null);
     setTrailer(null);
-    fetchLogo(type, data.id).then((url) => !cancelled && setLogo(url));
+    // Detail pages prefetch images via append_to_response; fetch only as a fallback
+    if (data.images?.logos) setLogo(pickLogo(data.images.logos));
+    else fetchLogo(type, data.id).then((url) => !cancelled && setLogo(url));
     const videos: any[] = (data.videos?.results ?? []).filter((v: any) => v.site === "YouTube");
     const key = (videos.find((v) => v.type === "Trailer") ?? videos[0])?.key;
     if (key) setTrailer(key);

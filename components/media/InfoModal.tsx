@@ -7,13 +7,13 @@ import { useMyList } from "../../hooks/useMyList";
 import {
   MediaItem,
   MediaType,
-  fetchLogo,
   formatRating,
   formatRuntime,
   genreNames,
   getTitle,
   getYear,
   imageUrl,
+  pickLogo,
   tmdb,
 } from "../../lib/tmdb";
 import MediaCard from "./MediaCard";
@@ -28,6 +28,7 @@ function InfoModal({ id: initialId, mediaType: initialType, onClose }: InfoModal
   const [current, setCurrent] = useState({ id: initialId, type: initialType });
   const [data, setData] = useState<MediaItem | null>(null);
   const [logo, setLogo] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
   const [showTrailer, setShowTrailer] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const { inList, toggle } = useMyList(data, current.type);
@@ -36,12 +37,19 @@ function InfoModal({ id: initialId, mediaType: initialType, onClose }: InfoModal
     let cancelled = false;
     setData(null);
     setLogo(null);
+    setFailed(false);
     setShowTrailer(false);
     panelRef.current?.scrollTo({ top: 0 });
-    tmdb<MediaItem>(`/${current.type}/${current.id}`, { append_to_response: "videos,recommendations,similar" })
-      .then((res) => !cancelled && setData(res))
-      .catch(() => {});
-    fetchLogo(current.type, current.id).then((url) => !cancelled && setLogo(url));
+    tmdb<MediaItem>(`/${current.type}/${current.id}`, {
+      append_to_response: "videos,recommendations,similar,images",
+      include_image_language: "en,null",
+    })
+      .then((res) => {
+        if (cancelled) return;
+        setData(res);
+        setLogo(pickLogo(res.images?.logos));
+      })
+      .catch(() => !cancelled && setFailed(true));
     return () => {
       cancelled = true;
     };
@@ -156,7 +164,11 @@ function InfoModal({ id: initialId, mediaType: initialType, onClose }: InfoModal
         </div>
 
         <div className="space-y-6 p-5 md:p-8">
-          {!data ? (
+          {failed ? (
+            <p className="py-6 text-center text-white/60" role="alert">
+              Couldn&apos;t load details right now. Please try again later.
+            </p>
+          ) : !data ? (
             <div className="space-y-3" aria-hidden>
               <div className="h-4 w-1/3 animate-pulse rounded bg-white/10" />
               <div className="h-4 w-full animate-pulse rounded bg-white/10" />

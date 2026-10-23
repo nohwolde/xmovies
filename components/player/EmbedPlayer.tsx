@@ -60,6 +60,11 @@ export function playerReducer(state: PlayerState, action: PlayerAction): PlayerS
     // Only timeouts mark a source as failed; switching away by hand doesn't,
     // so a source that already worked stays available as a fallback.
     case "select":
+      // Re-selecting the current source: keep a playing video as is, otherwise
+      // force a fresh load (new iframe key + timeout) instead of a stuck spinner
+      if (action.index === state.index) {
+        return state.status === "loaded" ? state : { ...state, status: "loading", attempt: state.attempt + 1 };
+      }
       return { ...state, index: action.index, status: "loading" };
     case "restore":
       return { ...state, index: action.index, tried: new Set(), status: "loading" };

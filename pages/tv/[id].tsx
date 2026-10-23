@@ -9,7 +9,7 @@ import MediaRow, { RowShell } from "../../components/media/MediaRow";
 import PersonCard from "../../components/media/PersonCard";
 import { SetContinueWatching, SetCurrentState } from "../../redux/actions/tvShowAction";
 import EmbedPlayer from "../../components/player/EmbedPlayer";
-import { MediaItem, formatRuntime, getTitle, imageUrl, tmdb } from "../../lib/tmdb";
+import { MediaItem, formatRuntime, getTitle, imageUrl, notFoundOrThrow, tmdb } from "../../lib/tmdb";
 import { isAnime } from "../../utils/video-sources";
 
 interface Episode {
@@ -74,21 +74,26 @@ function TvEpisode({ res: data }: { res: MediaItem }) {
     if (scroll) document.getElementById("watch")?.scrollIntoView({ behavior: "smooth" });
   };
 
+  // Episode count from the show data, so Next/Prev don't depend on the season
+  // fetch having finished (or succeeded)
+  const episodeCountFor = (season: number) =>
+    episodesFor(season)?.length || seasons.find((s) => s.season_number === season)?.episode_count || 0;
+  const playingEpisodeCount = episodeCountFor(playing.season);
+
   const hasPrev = playing.episode > 1 || playing.season > 1;
-  const hasNext = playing.episode < playingEpisodes.length || playing.season < lastSeason;
+  const hasNext = playing.episode < playingEpisodeCount || playing.season < lastSeason;
 
   const goPrev = () => {
     if (playing.episode > 1) {
       const ep = playingEpisodes.find((e) => e.episode_number === playing.episode - 1);
       playEpisode(ep ?? { season_number: playing.season, episode_number: playing.episode - 1 }, false);
     } else if (playing.season > 1) {
-      const prevSeason = seasons.find((s) => s.season_number === playing.season - 1);
-      playEpisode({ season_number: playing.season - 1, episode_number: prevSeason?.episode_count ?? 1 }, false);
+      playEpisode({ season_number: playing.season - 1, episode_number: episodeCountFor(playing.season - 1) || 1 }, false);
     }
   };
 
   const goNext = () => {
-    if (playing.episode < playingEpisodes.length) {
+    if (playing.episode < playingEpisodeCount) {
       const ep = playingEpisodes.find((e) => e.episode_number === playing.episode + 1);
       playEpisode(ep ?? { season_number: playing.season, episode_number: playing.episode + 1 }, false);
     } else if (playing.season < lastSeason) {
@@ -247,10 +252,13 @@ export async function getStaticPaths() {
 
 export const getStaticProps = async (context: any) => {
   try {
-    const res = await tmdb(`/tv/${context.params.id}`, { append_to_response: "credits,recommendations,videos" });
+    const res = await tmdb(`/tv/${context.params.id}`, {
+      append_to_response: "credits,recommendations,videos,images",
+      include_image_language: "en,null",
+    });
     return { props: { res }, revalidate: 60 * 60 * 24 };
-  } catch {
-    return { notFound: true };
+  } catch (error) {
+    return notFoundOrThrow(error);
   }
 };
 

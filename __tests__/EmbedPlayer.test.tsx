@@ -60,6 +60,30 @@ describe("EmbedPlayer", () => {
     expect(window.localStorage.getItem("xmovies:preferred-source")).toBe("c");
   });
 
+  it("leaves a playing video alone when its source is clicked again", () => {
+    render(<EmbedPlayer media={movie} sources={SOURCES} />);
+    loadIframe();
+    const iframe = screen.getByTitle(/video player/i);
+
+    fireEvent.click(screen.getByRole("button", { name: "Source a" }));
+
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(screen.getByTitle(/video player/i)).toBe(iframe);
+  });
+
+  it("reloads and re-arms the timeout when the current source is clicked before it loads", () => {
+    render(<EmbedPlayer media={movie} sources={SOURCES} />);
+    const iframe = screen.getByTitle(/video player/i);
+
+    fireEvent.click(screen.getByRole("button", { name: "Source a" }));
+
+    expect(screen.getByTitle(/video player/i)).not.toBe(iframe);
+    act(() => {
+      vi.advanceTimersByTime(LOAD_TIMEOUT_MS);
+    });
+    expect(iframeSrc()).toBe("https://b.test/m/550");
+  });
+
   it("restores the preferred source on mount", () => {
     window.localStorage.setItem("xmovies:preferred-source", "b");
     render(<EmbedPlayer media={movie} sources={SOURCES} />);

@@ -33,7 +33,10 @@ function Navbar() {
     const q = query.trim();
     if (q.length < 3) return;
     const timer = window.setTimeout(() => {
-      router.push(`/search/${encodeURIComponent(q)}/1`);
+      // Refine in place once on the results page so Back doesn't replay every partial query
+      const url = `/search/${encodeURIComponent(q)}/1`;
+      if (router.pathname.startsWith("/search")) router.replace(url);
+      else router.push(url);
     }, 400);
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps

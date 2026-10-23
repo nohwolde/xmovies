@@ -1,6 +1,6 @@
 import type { GetServerSideProps, NextPage } from "next";
 import Head from "next/head";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import GenreGrid from "../components/home/GenreGrid";
 import HeroCarousel from "../components/home/HeroCarousel";
@@ -73,25 +73,29 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async ({ res })
   };
 };
 
-// Rows with a Movies/Shows toggle: start from SSR data, refetch on toggle
+// Rows with a Movies/Shows toggle: start from SSR data, refetch on toggle.
+// Items keep the type they were fetched as, so cards never pair old items with
+// the newly requested type while a fetch is in flight.
 function useToggleRow(key: ToggleRow, initial: MediaItem[]) {
-  const [type, setType] = useState<MediaType>("movie");
-  const [items, setItems] = useState(initial);
-  const first = useRef(true);
+  const [requested, setRequested] = useState<MediaType>("movie");
+  const [row, setRow] = useState<{ type: MediaType; items: MediaItem[] }>({ type: "movie", items: initial });
 
   useEffect(() => {
-    if (first.current) {
-      first.current = false;
-      return;
-    }
+    if (requested === row.type) return;
     let cancelled = false;
-    toggleRows[key](type).then((results) => !cancelled && setItems(results));
+    toggleRows[key](requested).then((results) => {
+      if (cancelled) return;
+      // An empty/failed fetch keeps the current items (and toggle) visible
+      if (results.length) setRow({ type: requested, items: results });
+      else setRequested(row.type);
+    });
     return () => {
       cancelled = true;
     };
-  }, [key, type]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, requested]);
 
-  return { items, toggle: { value: type, onChange: setType } };
+  return { items: row.items, itemType: row.type, toggle: { value: requested, onChange: setRequested } };
 }
 
 function rankLabelFor(top10: MediaItem[]) {
@@ -131,12 +135,18 @@ const Home: NextPage<HomeProps> = ({ featured, top10, onAir, upcoming, drama, an
 
         <Top10Row title="TOP 10 on NMOVIES" items={top10} />
         <MediaRow title="Current & upcoming TV shows" items={onAir} mediaType="tv" href="/tvshows/1" badge={() => "New episode"} />
-        <MediaRow title="Trending This Week" items={trending.items} toggle={trending.toggle} />
-        <MediaRow title="Popular" items={popular.items} toggle={popular.toggle} href={popular.toggle.value === "tv" ? "/tvshows/1" : "/movies/1"} />
+        <MediaRow title="Trending This Week" items={trending.items} mediaType={trending.itemType} toggle={trending.toggle} />
+        <MediaRow
+          title="Popular"
+          items={popular.items}
+          mediaType={popular.itemType}
+          toggle={popular.toggle}
+          href={popular.itemType === "tv" ? "/tvshows/1" : "/movies/1"}
+        />
         <MediaRow title="Coming Soon" items={upcoming} mediaType="movie" badge={() => null} />
-        <MediaRow title="Top Rated" items={topRated.items} toggle={topRated.toggle} href="/topimdb/1" />
+        <MediaRow title="Top Rated" items={topRated.items} mediaType={topRated.itemType} toggle={topRated.toggle} href="/topimdb/1" />
         <MediaRow title="Acclaimed Drama Series" items={drama} mediaType="tv" />
-        <MediaRow title="Comedy" items={comedy.items} toggle={comedy.toggle} />
+        <MediaRow title="Comedy" items={comedy.items} mediaType={comedy.itemType} toggle={comedy.toggle} />
         <MediaRow title="Anime Series" items={animeShows} mediaType="tv" href="/anime/1" />
         <MediaRow title="Anime Movies" items={animeMovies} mediaType="movie" />
         <GenreGrid />

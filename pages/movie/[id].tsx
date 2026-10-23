@@ -1,23 +1,22 @@
 import Head from "next/head";
 import { useRouter } from "next/router";
 import React from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 import DetailContainer from "../../components/details/DetailContainer";
 import MediaRow, { RowShell } from "../../components/media/MediaRow";
 import PersonCard from "../../components/media/PersonCard";
 import { SetContinueWatching } from "../../redux/actions/tvShowAction";
 import EmbedPlayer from "../../components/player/EmbedPlayer";
-import { MediaItem, getTitle, tmdb } from "../../lib/tmdb";
+import { MediaItem, getTitle, notFoundOrThrow, tmdb } from "../../lib/tmdb";
 import { isAnime } from "../../utils/video-sources";
 
 export default function MovieEpisode({ resp: data }: { resp: MediaItem }) {
   const router = useRouter();
   const { id } = router.query;
   const dispatch = useDispatch();
-  const continueWatching: any[] = useSelector((state: any) => state.ContinueWatching) ?? [];
 
+  // The reducer replaces any existing entry, so re-watching bumps it to the front
   const handleIframe = () => {
-    if (continueWatching.some((item) => item.id == id)) return;
     dispatch(
       SetContinueWatching({
         id,
@@ -68,9 +67,12 @@ export async function getStaticPaths() {
 
 export const getStaticProps = async (context: any) => {
   try {
-    const resp = await tmdb(`/movie/${context.params.id}`, { append_to_response: "credits,recommendations,videos" });
+    const resp = await tmdb(`/movie/${context.params.id}`, {
+      append_to_response: "credits,recommendations,videos,images",
+      include_image_language: "en,null",
+    });
     return { props: { resp }, revalidate: 60 * 60 * 24 };
-  } catch {
-    return { notFound: true };
+  } catch (error) {
+    return notFoundOrThrow(error);
   }
 };

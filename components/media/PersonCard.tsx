@@ -4,7 +4,7 @@ import { MediaItem, imageUrl } from "../../lib/tmdb";
 
 function PersonCard({ item }: { item: MediaItem }) {
   const photo = imageUrl(item.profile_path, "w185");
-  const slug = `${(item.name ?? "").replace(/\s+/g, "-")}-${item.id}`;
+  const slug = `${encodeURIComponent((item.name ?? "").replace(/\s+/g, "-"))}-${item.id}`;
   return (
     <Link href={`/cast/${slug}`}>
       <a className="group block w-full text-center focus:outline-none" aria-label={item.name}>

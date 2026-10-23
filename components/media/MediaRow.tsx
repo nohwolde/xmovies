@@ -1,4 +1,5 @@
 import { AnimatePresence } from "framer-motion";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
@@ -124,11 +125,17 @@ export function useInfoModal() {
   const [selected, setSelected] = useState<{ id: number; type: MediaType } | null>(null);
   const open = useCallback((item: MediaItem, type: MediaType) => setSelected({ id: item.id, type }), []);
   const close = useCallback(() => setSelected(null), []);
-  const modal = (
-    <AnimatePresence>
-      {selected && <InfoModal key="info" id={selected.id} mediaType={selected.type} onClose={close} />}
-    </AnimatePresence>
-  );
+  // Portal to <body> so the modal escapes ancestor stacking contexts
+  // (the home rows' z-10 wrapper would otherwise put it under the navbar)
+  const modal =
+    typeof document === "undefined"
+      ? null
+      : createPortal(
+          <AnimatePresence>
+            {selected && <InfoModal key="info" id={selected.id} mediaType={selected.type} onClose={close} />}
+          </AnimatePresence>,
+          document.body
+        );
   return { open, modal };
 }
 
@@ -157,7 +164,7 @@ function MediaRow({ title, items, mediaType, href, toggle, badge }: MediaRowProp
           <MediaCard
             key={`${item.media_type ?? mediaType}-${item.id}`}
             item={item}
-            mediaType={toggle?.value ?? mediaType}
+            mediaType={mediaType}
             badge={badge?.(item)}
             onSelect={open}
           />
