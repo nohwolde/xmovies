@@ -1,5 +1,6 @@
 import Link from "next/link";
 import React from "react";
+import Logo from "../nav/Logo";
 
 const LINKS = [
   { name: "Home", href: "/" },
@@ -18,8 +19,8 @@ function Footer() {
       <div className="flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
         <div className="max-w-sm space-y-3">
           <Link href="/">
-            <a className="text-2xl font-black tracking-tight text-white">
-              N<span className="text-accent">MOVIES</span>
+            <a className="inline-block" aria-label="NMOVIES home">
+              <Logo className="h-[18px]" />
             </a>
           </Link>
           <p>
