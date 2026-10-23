@@ -2,12 +2,13 @@ import Head from "next/head";
 import React, { useEffect, useState } from "react";
 import { FaPlay } from "react-icons/fa";
 import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 import DetailContainer from "../../components/details/DetailContainer";
 import MediaRow, { RowShell } from "../../components/media/MediaRow";
 import PersonCard from "../../components/media/PersonCard";
 import { SetContinueWatching, SetCurrentState } from "../../redux/actions/tvShowAction";
 import EmbedPlayer from "../../components/player/EmbedPlayer";
+import { usePersistedState } from "../../hooks/usePersistedState";
 import { MediaItem, formatRuntime, getTitle, imageUrl, notFoundOrThrow, tmdb, trimDetail } from "../../lib/tmdb";
 import { isAnime } from "../../utils/video-sources";
 
@@ -45,7 +46,7 @@ function useSeasonEpisodes(showId: string | undefined, seasons: number[]) {
 function TvEpisode({ res: data }: { res: MediaItem }) {
   const id = data?.id ? String(data.id) : undefined;
   const dispatch = useDispatch();
-  const currentState: any[] = useSelector((state: any) => state.CurrentState) ?? [];
+  const { value: currentState, ready } = usePersistedState<any[]>("CurrentState", []);
   const saved = currentState.find((item) => item.id == id);
   const playing = { season: saved?.season_number ?? 1, episode: saved?.episode_number ?? 1 };
 
@@ -134,19 +135,27 @@ function TvEpisode({ res: data }: { res: MediaItem }) {
         <div className="mb-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-white/40">Now playing</p>
-            <h2 className="text-lg md:text-xl font-bold">
+            <h2 className={`text-lg md:text-xl font-bold ${ready ? "" : "invisible"}`}>
               S{playing.season} · E{playing.episode}
               {playingEpisode?.name ? <span className="font-normal text-white/70"> — {playingEpisode.name}</span> : null}
             </h2>
           </div>
         </div>
-        <EmbedPlayer
-          media={{ type: "tv", id: id as string, season: playing.season, episode: playing.episode }}
-          title={getTitle(data)}
-          anime={isAnime(data)}
-          className="aspect-video overflow-hidden rounded-xl ring-1 ring-white/10"
-          onLoad={handleIframe}
-        />
+        {/* Wait for the saved episode, so S1·E1 isn't loaded (and recorded as watched) first */}
+        {ready ? (
+          <EmbedPlayer
+            media={{ type: "tv", id: id as string, season: playing.season, episode: playing.episode }}
+            title={getTitle(data)}
+            anime={isAnime(data)}
+            className="aspect-video overflow-hidden rounded-xl ring-1 ring-white/10"
+            onLoad={handleIframe}
+          />
+        ) : (
+          <div aria-hidden>
+            <div className="mb-4 h-9" />
+            <div className="aspect-video rounded-xl bg-black ring-1 ring-white/10" />
+          </div>
+        )}
         <div className="mt-3 flex justify-end gap-2">
           <button
             type="button"
